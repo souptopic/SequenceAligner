@@ -13,3 +13,5 @@
 - [ ] Buffered writing instead of write(), or just exclude writing time from benchmarking altogether
 
 - [ ] Proper multithreading; right now the results could be orders of magnitude faster. Probably needs things like work stealing and / or better thread management.
+
+- [ ] Script for first time creation of _mega datasets
