@@ -12,6 +12,7 @@
 #include <windows.h>
 #include <io.h>
 #include <winioctl.h>
+#include <Shlwapi.h>
 #include <malloc.h>
 
 #define write(...) _write(__VA_ARGS__)

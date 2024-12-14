@@ -62,9 +62,9 @@ bin/%: $(SRC_DIR)/%.c | bin
 
 bin/%.exe: $(SRC_DIR)/%.c | bin
 ifeq ($(DETECTED_OS),Windows)
-	$(CC) $(WINDOWS_FLAGS) -I$(INC_DIR) -o $@ $< -lm -lpthread -lcomdlg32
+	$(CC) $(WINDOWS_FLAGS) -I$(INC_DIR) -o $@ $< -lm -lpthread -lcomdlg32 -lShlwapi
 else
-	$(CROSS_CC) $(WINDOWS_FLAGS) -I$(INC_DIR) -o $@ $< -lm -lpthread -lcomdlg32
+	$(CROSS_CC) $(WINDOWS_FLAGS) -I$(INC_DIR) -o $@ $< -lm -lpthread -lcomdlg32 -lShlwapi
 endif
 
 bin:

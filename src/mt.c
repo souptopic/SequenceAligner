@@ -1,4 +1,5 @@
 #include "utils.h"
+#include "args.h"
 
 #define MAX_THREADS 16
 #define BATCH_SIZE 65536
@@ -99,85 +100,20 @@ INLINE void destroy_thread_pool(void) {
 int main(int argc, char** argv) {
     SET_HIGH_PRIORITY();
 
-	if (argc > 1 && (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)) {
-    	printf("Usage: %s [input] [output]\n"
-           "Input: CSV file (default: %s)\n"
-           #ifdef MODE_WRITE
-           "Output: CSV file (default: %s)\n"
-           #endif
-           , argv[0], INPUT_FILE_MT
-           #ifdef MODE_WRITE
-           , OUTPUT_FILE_MT
-           #endif
-		);
-		return 0;
-	}
+	Args args = parse_args(argc, argv);
 
-	char base_path[MAX_PATH];
-    strncpy(base_path, argv[0], MAX_PATH - 1);
-    base_path[MAX_PATH - 1] = '\0';
-
-	for (char* p = base_path; *p; p++) {
-        if (*p == '\\') *p = '/';
-    }
-
-	char* last_slash = strrchr(base_path, '/');
-    if (last_slash) *last_slash = '\0';
-
-	last_slash = strrchr(base_path, '/');
-    if (last_slash) *last_slash = '\0';
-
-    char full_input_path[MAX_PATH];
-    char full_output_path[MAX_PATH];
-
-    snprintf(full_input_path, MAX_PATH, "%s/%s", base_path, INPUT_FILE_MT);
-    snprintf(full_output_path, MAX_PATH, "%s/%s", base_path, OUTPUT_FILE_MT);
-
-    const char* input_file = argv[1] ? argv[1] : full_input_path;
-    
-    #ifdef MODE_WRITE
-    const char* output_file = argc > 2 ? argv[2] : full_output_path;
-    #endif
-
-    #ifdef _WIN32
-    if (GetFileAttributesA(input_file) == INVALID_FILE_ATTRIBUTES) {
-    #else
-    if (access(input_file, F_OK) != 0) {
-    #endif
-        printf("Error: Input file '%s' does not exist\n", input_file);
-        return 1;
-    }
-
-    #ifdef _WIN32
-    HANDLE hFile = CreateFileA(input_file, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
-    HANDLE hMapping = CreateFileMapping(hFile, NULL, PAGE_READONLY, 0, 0, NULL);
-    char* file_data = (char*)MapViewOfFile(hMapping, FILE_MAP_READ, 0, 0, 0);
-    LARGE_INTEGER file_size;
-    GetFileSizeEx(hFile, &file_size);
-    size_t data_size = file_size.QuadPart;
-    #else
-    int fd = open(input_file, O_RDONLY);
-    struct stat sb;
-    fstat(fd, &sb);
-    size_t data_size = sb.st_size;
-    char* file_data = mmap(NULL, data_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    madvise(file_data, data_size, MADV_SEQUENTIAL);
-    #endif
-    
-    #ifdef MODE_WRITE
-    int fd_out = open(output_file, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0644);
-    char* write_buffer = (char*)mat_aligned_alloc(CACHE_LINE, WRITE_BUFFER_SIZE);
-    char* buf_pos = write_buffer;
-    const char* header = "sequence1,sequence2,label1,label2,score,alignment\n";
-    buf_pos = fast_strcpy(write_buffer, header, strlen(header));
-    #endif
+	#ifdef MODE_WRITE
+	int fd_out = args.fd_out;
+	char* write_buffer = args.write_buffer;
+	char* buf_pos = args.buf_pos;
+	#endif
     
     char** seqs = (char**)malloc(sizeof(char*) * BATCH_SIZE);
     for (int i = 0; i < BATCH_SIZE; i++) seqs[i] = (char*)mat_aligned_alloc(CACHE_LINE, MAX_SEQ_LEN);
     int* labels = (int*)malloc(sizeof(int) * BATCH_SIZE);
 
-    char* current = file_data;
-    char* end = file_data + data_size;
+    char* current = args.file_data;
+    char* end = args.file_data + args.data_size;
     
     // Skip header
     __m256i newline = _mm256_set1_epi8('\n');
@@ -257,24 +193,14 @@ int main(int argc, char** argv) {
 
     #ifdef MODE_WRITE
     write(fd_out, write_buffer, buf_pos - write_buffer);
-    close(fd_out);
     #endif
+
+	free_args(&args);
 
     for (int i = 0; i < BATCH_SIZE; i++) mat_aligned_free(seqs[i]);
     free(seqs);
     free(labels);
-    
     mat_aligned_free(scoring);
-    
-    #ifdef _WIN32
-    UnmapViewOfFile(file_data);
-    CloseHandle(hMapping);
-    CloseHandle(hFile);
-    #else
-    munmap(file_data, data_size);
-    close(fd);
-    #endif
-    
     destroy_thread_pool();
     
     printf("Alignment time: %f seconds\n", endt - start);
