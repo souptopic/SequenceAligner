@@ -1,10 +1,11 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define INPUT_FILE "../testing/datasets/avpdb.csv"
-#define INPUT_FILE_MT "../testing/datasets/avpdb_mega.csv"
-#define OUTPUT_FILE "../results/results.csv"
-#define OUTPUT_FILE_MT "../results/results_mega.csv"
+#define MAX_PATH 260
+#define INPUT_FILE "testing/datasets/avpdb.csv"
+#define INPUT_FILE_MT "testing/datasets/avpdb_mega.csv"
+#define OUTPUT_FILE "results/results.csv"
+#define OUTPUT_FILE_MT "results/results_mega.csv"
 
 #ifdef _WIN32
 
