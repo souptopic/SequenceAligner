@@ -79,8 +79,6 @@ Or just manually remove the `bin/` directory
 ## Usage
 The program reads sequences from CSV files and performs alignment:
 
-Note: do `cd bin` first
-
 - Single-threaded version: `./ms` or `.\ms.exe`
 
 
