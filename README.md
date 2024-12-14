@@ -85,6 +85,8 @@ The program reads sequences from CSV files and performs alignment:
 
 - Multi-threaded version: `.bin/mt` or `.bin\mt.exe`
 
+- Arguments: `[input_csv_path] [output_csv_path]`, `-h` or `--help`
+
 
 ## Format:
 
