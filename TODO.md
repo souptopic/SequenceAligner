@@ -15,3 +15,7 @@
 - [ ] Proper multithreading; right now the results could be orders of magnitude faster. Probably needs things like work stealing and / or better thread management.
 
 - [x] Script for first time creation of _mega datasets
+
+- [ ] Add cases for AVX-512 and for neither AVX2 and AVX-512
+
+- [ ] Comment cursed code, better code organization and cleanup
