@@ -5,7 +5,7 @@ A "high-performance"? sequence alignment tool.
 NOTE: This is a University Project.
 
 TEMP NOTE: 
-- File writing adds a lot to the final time and benchmark timing isn't standardized. Expect (relatively) massive fluctuations depending on unrelated OS things like file existing, cache etc. See: [TODO.md](TODO.md) and [Benchmark Times](#benchmark-times)
+- File writing adds a lot to the final time (~100-200µs) and benchmark timing isn't standardized. Expect (relatively) massive fluctuations depending on unrelated OS things like file existing, cache etc. See: [TODO.md](TODO.md) and [Benchmark Times](#benchmark-times)
 	- Remove / comment (`#`) `BASE_FLAGS += -DMODE_WRITE` at line 21 in [Makefile](Makefile) for consistent results until I fix writing.
 
 ## Table of Contents
