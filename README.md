@@ -25,20 +25,22 @@ TEMP NOTE:
 
 ## Requirements
 
-### Windows (MSYS2)
-- MSYS2 installed from https://www.msys2.org
-- GCC toolchain: `pacman -S mingw-w64-x86_64-gcc`
-- Make (choose one):
-  - MinGW Make: `pacman -S mingw-w64-x86_64-make` (I used this)
-  - GNU Make: `pacman -S make` (Didn't test)
+### Windows (MSYS2 -> UCRT64)
+- MSYS2 installed from https://www.msys2.org in UCRT64 Environment
+	- AFAIK UCRT64 Packages are built for Windows projects, while GNU Versions (`gcc`, `make`) and `python` are for native MSYS2
+- GCC toolchain: `pacman -S mingw-w64-ucrt-x86_64-gcc`
+- Python: `pacman -S mingw-w64-ucrt-x86_64-python`
+- Make: `pacman -S mingw-w64-ucrt-x86_64-make`
 - Required CPU features: AVX2, SSE4.2, BMI2
 
 ### Linux
-- GCC toolchain: `sudo apt install build-essential`
+- Build essentials: `sudo apt install build-essential` 
+	- or distro equivalent
 - Required CPU features: AVX2, SSE4.2, BMI2
 
 ### Windows Support on Linux
 - MinGW-w64 cross-compiler: `sudo apt install gcc-mingw-w64`
+	- or distro equivalent
 - Required CPU features: AVX2, SSE4.2, BMI2
 
 ### WSL2
@@ -48,10 +50,7 @@ Same requirements as Linux or Windows Support on Linux depending on target platf
 
 ### Windows Build
 ```sh
-# In MSYS2 MinGW64 shell
 mingw32-make
-# If using GNU Make
-make
 ```
 
 ### Linux Build
@@ -71,8 +70,8 @@ Same commands as [Linux Build](#linux-build) or [Cross-Platform Build on Linux](
 ## Cleaning
 ```sh
 # Removes bin/ directory
+mingw32-make clean # MSYS2 UCRT64 (Windows) Make
 make clean
-mingw32-make clean # MSYS2 MinGW64 Make
 ```
 
 Or just manually remove the `bin/` directory
