@@ -5,7 +5,7 @@ A "high-performance"? sequence alignment tool.
 NOTE: This is a University Project.
 
 TEMP NOTE: 
-- File writing adds a lot to the final time and benchmark timing isn't standardized. Expect (relatively) massive fluctuations depending on unrelated OS things like file existing, cache etc. See: [TODO.md](TODO.md)
+- File writing adds a lot to the final time and benchmark timing isn't standardized. Expect (relatively) massive fluctuations depending on unrelated OS things like file existing, cache etc. See: [TODO.md](TODO.md) and [Benchmark Times](#benchmark-times)
 	- Remove / comment (`#`) `BASE_FLAGS += -DMODE_WRITE` at line 21 in [Makefile](Makefile) for consistent results until I fix writing.
 
 ## Table of Contents
@@ -22,6 +22,7 @@ TEMP NOTE:
 - [Usage](#usage)
 - [Features](#features)
 - [Development](#development)
+- [Benchmark Times](#benchmark-times)
 
 ## Requirements
 
@@ -79,10 +80,10 @@ Or just manually remove the `bin/` directory
 ## Usage
 The program reads sequences from CSV files and performs alignment:
 
-- Single-threaded version: `./ms` or `.\ms.exe`
+- Single-threaded version: `.bin/ms` or `.bin\ms.exe`
 
 
-- Multi-threaded version: `./mt` or `.\mt.exe`
+- Multi-threaded version: `.bin/mt` or `.bin\mt.exe`
 
 
 ## Format:
