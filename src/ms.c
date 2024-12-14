@@ -10,7 +10,7 @@ int main(void) {
     char* file_data = (char*)MapViewOfFile(hMapping, FILE_MAP_READ, 0, 0, 0);
     LARGE_INTEGER file_size;
     GetFileSizeEx(hFile, &file_size);
-    size_t data_size = (size_t)file_size.QuadPart;
+    size_t data_size = file_size.QuadPart;
     #else
     int fd = open(INPUT_FILE, O_RDONLY);
     struct stat sb;
@@ -42,7 +42,7 @@ int main(void) {
         __m256i data = _mm256_loadu_si256((__m256i*)current);
         int mask = _mm256_movemask_epi8(_mm256_cmpeq_epi8(data, newline));
         if (mask) {
-            current += (size_t)__builtin_ctz(mask) + 1;
+            current += __builtin_ctz(mask) + 1;
             break;
         }
         current += 32;

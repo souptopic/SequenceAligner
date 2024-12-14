@@ -58,8 +58,8 @@ INLINE char* fast_strcpy(char* dst, const char* src, size_t len) {
 
 INLINE char* int_to_str(char* str, int num) {
     char* ptr = str;
-    uint32_t n = (uint32_t)((num ^ (num >> 31)) - (num >> 31)); // Convert to unsigned with abs
-    uint32_t neg = (uint32_t)((num >> 31) & 1);
+    uint32_t n = (num ^ (num >> 31)) - (num >> 31); // Convert to unsigned with abs
+    uint32_t neg = (num >> 31) & 1;
     *ptr = '-';
     ptr += neg;
     
@@ -123,7 +123,7 @@ INLINE char* parse1(char** current, char* seq, int* label) {
         _mm256_cmpeq_epi8(data2, nl_vec)
     );
     
-    uint64_t mask1 = (uint64_t)_mm256_movemask_epi8(is_delim1);
+    uint64_t mask1 = _mm256_movemask_epi8(is_delim1);
     uint64_t mask2 = (uint64_t)_mm256_movemask_epi8(is_delim2) << 32;
 
     // Path for very short sequences (<32 bytes)
@@ -146,7 +146,7 @@ INLINE char* parse1(char** current, char* seq, int* label) {
 
     // Path for medium sequences (32-64 bytes)
     if (LIKELY(mask2)) {
-        uint32_t pos = __builtin_ctz((uint32_t)(mask2 >> 32)) + 32;
+        uint32_t pos = __builtin_ctz(mask2 >> 32) + 32;
         
         _mm256_storeu_si256((__m256i*)seq, data1);
         _mm256_storeu_si256((__m256i*)(seq + 32), data2);

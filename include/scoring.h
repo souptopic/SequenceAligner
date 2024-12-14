@@ -46,8 +46,8 @@ INLINE void init_scoring_matrix(ScoringMatrix* matrix) {
 
     // Initialize lookup table
     memset(AMINO_LOOKUP, -1, sizeof(AMINO_LOOKUP));
-    for (size_t i = 0; i < strlen(AMINO_ACIDS); i++) {
-        AMINO_LOOKUP[(int)AMINO_ACIDS[i]] = (int)i;
+    for (int i = 0; i < (int)strlen(AMINO_ACIDS); i++) {
+        AMINO_LOOKUP[(int)AMINO_ACIDS[i]] = i;
     }
 }
 
