@@ -1,8 +1,8 @@
 ### TODO LIST
 - [ ] Create a user specification script 
-* Module for finding the optimal values for BATCH_SIZE and WRITE_BUFFER_SIZE
-* Module for choosing the local dataset location, or add an open file dialog to existing code
-* Module for choosing the format of input and output csv
+	- [ ] Module for finding the optimal values for BATCH_SIZE and WRITE_BUFFER_SIZE
+	- [ ] Module for choosing the local dataset location, or add an open file dialog to existing code
+	- [ ] Module for choosing the format of input and output csv
 
 - [ ] Perform a Similarity Analysis on the Results
 
@@ -14,4 +14,4 @@
 
 - [ ] Proper multithreading; right now the results could be orders of magnitude faster. Probably needs things like work stealing and / or better thread management.
 
-- [ ] Script for first time creation of _mega datasets
+- [x] Script for first time creation of _mega datasets

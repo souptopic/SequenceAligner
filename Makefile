@@ -33,7 +33,14 @@ SOURCES = $(addprefix $(SRC_DIR)/, ms.c mt.c)
 NATIVE_TARGETS = $(addprefix bin/, $(notdir $(SOURCES:.c=)))
 WINDOWS_TARGETS = $(addprefix bin/, $(notdir $(SOURCES:.c=.exe)))
 
-all: debug
+DATASET_DIR = testing/datasets
+MEGA_DATASET = $(DATASET_DIR)/avpdb_mega.csv
+BASE_DATASET = $(DATASET_DIR)/avpdb.csv
+
+all: $(MEGA_DATASET) debug
+
+$(MEGA_DATASET): $(BASE_DATASET)
+	python3 scripts/create_mega_dataset.py -sc
 
 ifeq ($(DETECTED_OS),Windows)
 debug: windows
