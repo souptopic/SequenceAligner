@@ -28,8 +28,9 @@ WINDOWS_FLAGS = $(COMMON_FLAGS) -mconsole -D_WIN32_WINNT=0x0601
 
 SRC_DIR = src
 INC_DIR = include
+SRC_FILES = $(wildcard $(SRC_DIR)/*.c)
 
-SOURCES = $(addprefix $(SRC_DIR)/, ms.c mt.c)
+SOURCES = $(addprefix $(SRC_DIR)/, $(notdir $(SRC_FILES)))
 NATIVE_TARGETS = $(addprefix bin/, $(notdir $(SOURCES:.c=)))
 WINDOWS_TARGETS = $(addprefix bin/, $(notdir $(SOURCES:.c=.exe)))
 

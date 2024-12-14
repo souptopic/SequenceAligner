@@ -56,6 +56,9 @@ INLINE int get_num_threads(void) {
 
 INLINE void* thread_pool_worker(void* arg) {
     ThreadWork* work = (ThreadWork*)arg;
+
+	int thread_id = work - g_thread_work;
+	PIN_THREAD(thread_id);
     
     while (1) {
         sem_wait(work->work_ready);
@@ -112,13 +115,13 @@ INLINE BatchTiming measure_batch_performance(char* start, char* end, size_t batc
         seqs[i] = (char*)mat_aligned_alloc(CACHE_LINE, MAX_SEQ_LEN);
     int* labels = (int*)malloc(sizeof(int) * batch_size);
     
-    fast_parse_csv_line(&current, seqs[0], &labels[0]);
+    parse2(&current, seqs[0], &labels[0]);
     
     double start_time = get_time();
     
     while (current < end && rows_processed < TUNING_ROWS) {
         while (seq_count < batch_size && current < end && rows_processed < TUNING_ROWS) {
-            fast_parse_csv_line(&current, seqs[seq_count], &labels[seq_count]);
+            parse2(&current, seqs[seq_count], &labels[seq_count]);
             seq_count++;
             rows_processed++;
         }
@@ -166,8 +169,10 @@ INLINE BatchTiming measure_batch_performance(char* start, char* end, size_t batc
 }
 
 int main(void) {
+	SET_HIGH_PRIORITY();
+
     #ifdef _WIN32
-    HANDLE hFile = CreateFileA("avpdb_mega.csv", GENERIC_READ, FILE_SHARE_READ, NULL, 
+    HANDLE hFile = CreateFileA(INPUT_FILE_MT, GENERIC_READ, FILE_SHARE_READ, NULL, 
                               OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
     HANDLE hMapping = CreateFileMapping(hFile, NULL, PAGE_READONLY, 0, 0, NULL);
     char* file_data = (char*)MapViewOfFile(hMapping, FILE_MAP_READ, 0, 0, 0);
@@ -175,7 +180,7 @@ int main(void) {
     GetFileSizeEx(hFile, &file_size);
     size_t data_size = file_size.QuadPart;
     #else
-    int fd = open("avpdb_mega.csv", O_RDONLY);
+    int fd = open(INPUT_FILE_MT, O_RDONLY);
     struct stat sb;
     fstat(fd, &sb);
     size_t data_size = sb.st_size;
@@ -198,6 +203,7 @@ int main(void) {
         current += 32;
     }
     
+	init_length_lookup();
     init_thread_pool();
     ScoringMatrix* scoring = (ScoringMatrix*)mat_aligned_alloc(CACHE_LINE, sizeof(ScoringMatrix));
     init_scoring_matrix(scoring);
