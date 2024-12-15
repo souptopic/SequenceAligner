@@ -47,13 +47,13 @@ DATASET_DIR = testing/datasets
 MEGA_DATASET = $(DATASET_DIR)/avpdb_mega.csv
 BASE_DATASET = $(DATASET_DIR)/avpdb.csv
 
+all: debug
+
 tune:
 	$(MAKE) debug SRC_DIR=$(TUNER_DIR) \
         NATIVE_TARGETS="$(TUNER_NATIVE_TARGETS)" \
         WINDOWS_TARGETS="$(TUNER_WINDOWS_TARGETS)" \
         COMMON_FLAGS="$(TUNE_FLAGS)"
-
-all: debug
 
 dataset: $(MEGA_DATASET)
 
