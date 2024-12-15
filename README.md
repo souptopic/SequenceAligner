@@ -13,6 +13,7 @@ NOTE: This is a University Project.
   - [Windows Build](#windows-build)
   - [Linux or WSL2 Build](#linux-or-wsl2-build)
   - [Cross-Platform Build on Linux or WSL2](#cross-platform-build-on-linux-or-wsl2)
+  - [Creating large datasets (important)](#creating-large-datasets) 
   - [Tuning for potential faster runtime](#tuning-for-potential-faster-runtime)
 - [Cleaning](#cleaning)
 - [Usage](#usage)
@@ -40,6 +41,11 @@ NOTE: This is a University Project.
 	- or distro equivalent
 
 ## Building
+- Clone this repository and change directory to project root
+```sh
+git clone https://github.com/souptopic/SequenceAligner.git
+cd SequenceAligner
+```
 
 ### Windows Build
 ```sh
@@ -57,11 +63,23 @@ make linux
 make
 ```
 
+### Creating large datasets
+- Create large datasets from the provided standard dataset with
+```sh
+mingw32-make dataset # MSYS2 UCRT64 (Windows) Make
+make dataset
+```
+- Required for running `mt(.exe)` in default mode (no arguments)
+
 ### Tuning for potential faster runtime
-- Build tuners with `mingw32-make tune` or `make tune` and run the binaries
+- Build tuners with 
+```sh
+mingw32-make tune
+make tune
+``` 
+- Run the binaries `batch(.exe)` and `buffer(.exe)`
 - Results will be displayed and you can modify the variables they tune
 - The tuners will print out an explanation on how to do so
-
 
 ## Cleaning
 ```sh
@@ -69,28 +87,22 @@ make
 mingw32-make clean # MSYS2 UCRT64 (Windows) Make
 make clean
 ```
-
 Or just manually remove the `bin/` directory
 
 ## Usage
 The program reads sequences from CSV files and performs alignment:
-
-- Single-threaded version: `.bin/ms` or `.bin\ms.exe`
-
-
-- Multi-threaded version: `.bin/mt` or `.bin\mt.exe`
-
-- Arguments: `[input_csv_path] [output_csv_path]`, `-h` or `--help`
-
+- Single-threaded version: `.bin/ms(.exe)`
+- Multi-threaded version: `.bin/mt(.exe)`
+- Optional arguments: `[input_csv_path] [output_csv_path]`, `-h` or `--help`
 
 ## Format:
-
 - Note: Format will be easy to change with a script later
 
 ### Input Files
 - Standard dataset: [avpdb.csv](testing/datasets/avpdb.csv) | 1042 lines | 27KB
 - Large dataset: [created with script](scripts/create_mega_dataset.py) | 4001280 lines | 97.6MB
 
+#### Format:
 ```csv
 sequence, label
 KPVSLS,0
@@ -101,7 +113,7 @@ LNNSRA,0
 - Single-threaded: [results.csv](results/results.csv)
 - Multi-threaded: `results_mega.csv`
 
-Format:
+#### Format:
 ```csv
 sequence1,sequence2,label1,label2,score,alignment
 KPVSLS,LNNSRA,0,0,-5,"('KPVSLS', 'LNNSRA')"
@@ -126,8 +138,8 @@ LNNSRA,HCKFWF,0,1,-14,"('LNNSRA', 'HCKFWF')"
 #### Why not from program start to end?
 - Things such as file creation add fluctuations between runs 
 - The point isn't optimizing the Windows File System, but the alignment algorithm and (maybe) csv parsing and writing which actually allow for some optimizations.
-- Right now, things like frees, file creation and writes add a bit of time, sometimes no change, sometimes stalling for ~100-200µs or up to 2 seconds, probably from stuff like Windows Defender or File Explorer background services, making it impossible to notice improvements from micro-optimizations
-- To see stable results, comment the line 21 in [Makefile](Makefile), as then there will be little to no fluctuations in final time. This should be the case until I make writing consistent. See: [TODO](TODO.md)
+- Right now, things like file creation and writes add a bit of time, sometimes no change, sometimes stalling for ~100-200µs or up to 2 seconds, probably from stuff like Windows Defender or File Explorer background services, making it impossible to notice improvements from micro-optimizations
+- To see stable results, comment the line 21 in [Makefile](Makefile), as then there will be little to no fluctuations in final time. This should be the case until I make writing consistent and include it in the benchmark time. See: [TODO](TODO.md)
 
 ### Singe-threaded Standard dataset
 - ~400µs on WSL2 Ubuntu without writing, ~550µs with
