@@ -13,44 +13,39 @@ int main(int argc, char** argv) {
 
     char* seq = (char*)mat_aligned_alloc(CACHE_LINE, MAX_SEQ_LEN);
     char* prev_seq = (char*)mat_aligned_alloc(CACHE_LINE, MAX_SEQ_LEN);
-    int label = 0;
-    int prev_label;
+    char* data = (char*)mat_aligned_alloc(CACHE_LINE, MAX_CSV_LINE - MAX_SEQ_LEN);
+    char* prev_data = (char*)mat_aligned_alloc(CACHE_LINE, MAX_CSV_LINE - MAX_SEQ_LEN);
     
     char* current = args.file_data;
     char* end = args.file_data + args.data_size;
     
     current = skip_header(current, end);
     
-    init_length_lookup();
-
-    parse1(&current, prev_seq, &prev_label);
+	init_format();
 
     Alignment* result = (Alignment*)mat_aligned_alloc(CACHE_LINE, sizeof(Alignment));
     ScoringMatrix* scoring = (ScoringMatrix*)mat_aligned_alloc(CACHE_LINE, sizeof(ScoringMatrix));
     init_scoring_matrix(scoring);
 
     double start = get_time();
+    parse_csv_line(&current, prev_seq, prev_data);
     while (current < end && *current) {
-        PREFETCH(current + MAX_LINE * 2);
-
-        #ifdef MODE_WRITE
-        PREFETCH(buf_pos + MAX_LINE * 2);
-        #endif
-        
-        parse1(&current, seq, &label);
+        parse_csv_line(&current, seq, data);
         align_sequences(prev_seq, (int)strlen(prev_seq), seq, (int)strlen(seq), scoring, result);
 
         #ifdef MODE_WRITE
-        if (UNLIKELY((size_t)(buf_pos - write_buffer) > WRITE_BUF - MAX_LINE * 4)) {
+        if (UNLIKELY((size_t)(buf_pos - write_buffer) > WRITE_BUF - MAX_CSV_LINE * 4)) {
             write(fd_out, write_buffer, buf_pos - write_buffer);
             buf_pos = write_buffer;
         }
 
-        buf_pos = write_alignment_output(buf_pos, prev_seq, strlen(prev_seq), seq, strlen(seq), prev_label, label, result);
+        Data prev = {prev_seq, prev_data, strlen(prev_seq)};
+        Data curr = {seq, data, strlen(seq)};
+        buf_pos = write_alignment_output(buf_pos, &prev, &curr, result);
         #endif
 
-        copy_full_sequence(prev_seq, seq);
-        prev_label = label;
+        strcpy(prev_data, data);
+        strcpy(prev_seq, seq);
     }
 
     // Will be moved below write once buffered writes are implemented

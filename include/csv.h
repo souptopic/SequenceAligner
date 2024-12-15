@@ -3,7 +3,7 @@
 
 #include "align.h"
 
-//define MAX_SEQ_LEN in common.h, line 88, by default it's (64)
+#define MAX_CSV_LINE (256)
 
 /* Format for the CSV file that is being read.
  * The CSV lines must be consistent (i.e. same number of columns and same data types in each column).
@@ -16,13 +16,16 @@
  * Here, you can choose what the result CSV will look like.
  * You must provide indexes for the sequences, score and alignment.
  * If, for example, the fifth line is being read, that means SEQ1 is your 5th sequence, SEQ2 will be the 6th.
- * The unimportant data columns will be copied in the result column in a way that there will be the least amount of columns.*/
+ * The unimportant data columns will be copied so that empty columns are filled first, then at the end.
+ * You can use as much unimportant data columns as you want, however the results data columns must be 2x read data columns */
 #ifdef MODE_WRITE
 #define RESULT_CSV_HEADER "sequence1,sequence2,label1,label2,score,alignment\n"
 #define RESULT_CSV_SEQ1_POS (0)
 #define RESULT_CSV_SEQ2_POS (1)
 #define RESULT_CSV_SCORE_POS (4)
 #define RESULT_CSV_ALIGN_POS (5)
+#define RESULT_CSV_ALIGN_FORMAT "\"('%s', '%s')\""
+#define ALIGN_STRL (3 + SEQ_BUF + 4 + SEQ_BUF + 3) // SEQ_BUF = MAX_SEQ_LEN * 2 // because of extra possible '-' when aligning
 #endif
 
 /* The result of this example format will be exactly like this
@@ -49,6 +52,31 @@ You can have as many data columns as you want, they will be copied to whatever e
 However, the result format must have two times the data columns (data1, data2)
 This is because the algorithm aligns the current sequence with the next one and must write the data for both sequences.
 */
+
+typedef struct {
+    const char* seq;
+    const char* other_data;
+    size_t len;
+} Data;
+
+typedef struct {
+    size_t seq_pos;
+    size_t* data_pos;
+    size_t data_count;
+} ReadFormat;
+
+typedef struct {
+    size_t seq1_pos;
+    size_t seq2_pos;
+    size_t score_pos;
+    size_t align_pos;
+    size_t* data1_pos;
+    size_t* data2_pos;
+    size_t data_count;
+} WriteFormat;
+
+static ReadFormat read_format;
+static WriteFormat write_format;
 
 INLINE char* skip_header(char* current, char* end) {
     __m256i newline = _mm256_set1_epi8('\n');
@@ -99,257 +127,175 @@ INLINE char* int_to_str(char* str, int num) {
     *ptr = '-';
     ptr += neg;
     
+    // Buffer for digits (max 10 digits for 32-bit int + sign)
+    char digits[12];
+    char* digit_ptr = digits;
+    
     if (n == 0) {
         *ptr++ = '0';
         return ptr;
     }
     
-    // Reverse digits directly into output buffer
-    char* start = ptr;
+    // Store digits in forward order
     do {
         uint32_t q = n / 10;
         uint32_t r = n - (q * 10); // mod
-        *ptr++ = (char)('0' + r);
+        *digit_ptr++ = (char)('0' + r);
         n = q;
     } while (n);
     
-    // Reverse in-place
-    char* end = ptr - 1;
-    while (start < end) {
-        char temp = *start;
-        *start = *end;
-        *end = temp;
-        start++;
-        end--;
+    // Copy digits in reverse order
+    while (digit_ptr > digits) {
+        *ptr++ = *--digit_ptr;
     }
     
     return ptr;
 }
 
-static uint8_t length_lookup[256] ALIGN;
-
-INLINE void init_length_lookup() {
-    for (int i = 0; i < 256; i++) {
-        length_lookup[i] = (uint8_t)__builtin_popcount(i);
+INLINE void init_format() {
+    // Read format analysis
+    char* header = READ_CSV_HEADER;
+    size_t read_cols = 1;
+    for(const char* p = header; *p && *p != '\n'; p++) {
+        if(*p == ',') read_cols++;
     }
-}
-
-// a bit faster for singlethreaded
-INLINE char* parse1(char** current, char* seq, int* label) {
-    char* p = *current;
     
-    PREFETCH(p + 64);
-    PREFETCH(p + 128);
-    PREFETCH(p + 192);
-    PREFETCH(p + 256);
-    PREFETCH(p + 384);
-
-    __m256i data1 = _mm256_loadu_si256((__m256i*)p);
-    __m256i data2 = _mm256_loadu_si256((__m256i*)(p + 32));
+    read_format.seq_pos = READ_CSV_SEQ_POS;
+    read_format.data_count = read_cols - 1;
+    read_format.data_pos = malloc(sizeof(size_t) * read_format.data_count);
     
-    const __m256i delim_vec = _mm256_set1_epi8(',');
-    const __m256i nl_vec = _mm256_set1_epi8('\n');
-    
-    __m256i is_delim1 = _mm256_or_si256(
-        _mm256_cmpeq_epi8(data1, delim_vec),
-        _mm256_cmpeq_epi8(data1, nl_vec)
-    );
-    __m256i is_delim2 = _mm256_or_si256(
-        _mm256_cmpeq_epi8(data2, delim_vec),
-        _mm256_cmpeq_epi8(data2, nl_vec)
-    );
-    
-    uint64_t mask1 = _mm256_movemask_epi8(is_delim1);
-    uint64_t mask2 = (uint64_t)_mm256_movemask_epi8(is_delim2) << 32;
-
-    // Path for very short sequences (<32 bytes)
-    if (LIKELY(mask1)) {
-        uint32_t pos = (uint32_t)__builtin_ctz(mask1);
-        
-        _mm256_storeu_si256((__m256i*)seq, data1);
-        seq[pos] = '\0';
-        
-        p += pos + 1;
-        *label = (*p - '0') & 1;
-        
-        __m256i nl_check = _mm256_loadu_si256((__m256i*)p);
-        uint32_t nl_mask = _mm256_movemask_epi8(_mm256_cmpeq_epi8(nl_check, nl_vec));
-        p += __builtin_ctz(nl_mask) + 1;
-        
-        *current = p;
-        return p;
-    }
-
-    // Path for medium sequences (32-64 bytes)
-    if (LIKELY(mask2)) {
-        uint32_t pos = __builtin_ctz(mask2 >> 32) + 32;
-        
-        _mm256_storeu_si256((__m256i*)seq, data1);
-        _mm256_storeu_si256((__m256i*)(seq + 32), data2);
-        seq[pos] = '\0';
-        
-        p += pos + 1;
-        *label = (*p - '0') & 1;
-        
-        __m256i nl_check = _mm256_loadu_si256((__m256i*)p);
-        uint32_t nl_mask = _mm256_movemask_epi8(_mm256_cmpeq_epi8(nl_check, nl_vec));
-        p += __builtin_ctz(nl_mask) + 1;
-        
-        *current = p;
-        return p;
-    }
-
-    // Path for long sequences
-    char* seq_ptr = seq;
-    _mm256_storeu_si256((__m256i*)seq_ptr, data1);
-    _mm256_storeu_si256((__m256i*)(seq_ptr + 32), data2);
-    p += 64;
-    seq_ptr += 64;
-    
-    while (1) {
-        PREFETCH(p + 512);
-        
-        data1 = _mm256_loadu_si256((__m256i*)p);
-        is_delim1 = _mm256_or_si256(
-            _mm256_cmpeq_epi8(data1, delim_vec),
-            _mm256_cmpeq_epi8(data1, nl_vec)
-        );
-        mask1 = _mm256_movemask_epi8(is_delim1);
-        
-        if (mask1) {
-            uint32_t pos = __builtin_ctz(mask1);
-            memcpy(seq_ptr, p, pos);
-            seq_ptr[pos] = '\0';
-            
-            p += pos + 1;
-            *label = (*p - '0') & 1;
-            
-            __m256i nl_check = _mm256_loadu_si256((__m256i*)p);
-            uint32_t nl_mask = _mm256_movemask_epi8(_mm256_cmpeq_epi8(nl_check, nl_vec));
-            p += __builtin_ctz(nl_mask) + 1;
-            break;
+    // Map all non-sequence columns as data
+    size_t idx = 0;
+    for(size_t i = 0; i < read_cols; i++) {
+        if(i != read_format.seq_pos) {
+            read_format.data_pos[idx++] = i;
         }
-        
-        _mm256_storeu_si256((__m256i*)seq_ptr, data1);
-        p += 32;
-        seq_ptr += 32;
+    }
+
+    // Write format analysis
+    header = RESULT_CSV_HEADER;
+    size_t write_cols = 1;
+    for(const char* p = header; *p && *p != '\n'; p++) {
+        if(*p == ',') write_cols++;
     }
     
-    *current = p;
-    return p;
+    write_format.seq1_pos = RESULT_CSV_SEQ1_POS;
+    write_format.seq2_pos = RESULT_CSV_SEQ2_POS;
+    write_format.score_pos = RESULT_CSV_SCORE_POS;
+    write_format.align_pos = RESULT_CSV_ALIGN_POS;
+    
+    // Calculate how many data column pairs we need
+    write_format.data_count = read_format.data_count;
+    write_format.data1_pos = malloc(sizeof(size_t) * write_format.data_count);
+    write_format.data2_pos = malloc(sizeof(size_t) * write_format.data_count);
+    
+    // Find available positions for data columns
+    bool* used = calloc(write_cols, sizeof(bool));
+    used[write_format.seq1_pos] = true;
+    used[write_format.seq2_pos] = true;
+    used[write_format.score_pos] = true;
+    used[write_format.align_pos] = true;
+    
+    // Map data columns to unused positions
+    idx = 0;
+    for(size_t i = 0; i < write_cols && idx < write_format.data_count; i++) {
+        if(!used[i]) {
+            write_format.data1_pos[idx] = i;
+            for(size_t j = i + 1; j < write_cols && idx < write_format.data_count; j++) {
+                if(!used[j]) {
+                    write_format.data2_pos[idx] = j;
+                    used[i] = used[j] = true;
+                    idx++;
+                    break;
+                }
+            }
+        }
+    }
+
+    free(used);
 }
 
-// a bit faster for multithreaded
-INLINE char* parse2(char** current, char* seq, int* label) {
+INLINE char* parse_csv_line(char** current, char* seq, char* other_data) {
     char* p = *current;
+    char* write_pos = seq;
+    size_t col = 0;
     
-    PREFETCH(p + 64);
-    PREFETCH(p + 128);
-    PREFETCH(p + 192);
-    PREFETCH(p + 256);
-    PREFETCH(p + 384);
+    // Skip whitespace
+    while (*p && (*p == ' ' || *p == '\r' || *p == '\n')) p++;
     
-    __m256i data = _mm256_loadu_si256((__m256i*)p);
-    
-    const __m256i delim_vec = _mm256_set1_epi8(',');
-    const __m256i nl_vec = _mm256_set1_epi8('\n');
-    __m256i is_delim = _mm256_or_si256(
-        _mm256_cmpeq_epi8(data, delim_vec),
-        _mm256_cmpeq_epi8(data, nl_vec)
-    );
-    uint32_t mask = _mm256_movemask_epi8(is_delim);
-
-    if (LIKELY(mask)) {
-        uint32_t pos = __builtin_ctz(mask);
-        _mm256_storeu_si256((__m256i*)seq, data);
-        seq[pos] = '\0';
-        p += pos + 1;
-        *label = (*p - '0') & 1;
-        while (*p != '\n' && *p) p++;
-        if (*p) p++;
-        *current = p;
-        return p;
+    // Process each column
+    while (*p && *p != '\n' && *p != '\r') {
+        if (*p == ',') {
+            *write_pos = '\0';
+            col++;
+            write_pos = (col == read_format.seq_pos) ? seq : other_data;
+            p++;
+            continue;
+        }
+        *write_pos++ = *p++;
     }
-
-    char* seq_ptr = seq;
-    _mm256_storeu_si256((__m256i*)seq_ptr, data);
-    p += 32;
-    seq_ptr += 32;
+    *write_pos = '\0';
     
-    data = _mm256_loadu_si256((__m256i*)p);
-    is_delim = _mm256_or_si256(
-        _mm256_cmpeq_epi8(data, delim_vec),
-        _mm256_cmpeq_epi8(data, nl_vec)
-    );
-    mask = _mm256_movemask_epi8(is_delim);
-    
-    if (LIKELY(mask)) {
-        uint32_t pos = __builtin_ctz(mask);
-        
-        uint64_t* dst64 = (uint64_t*)seq_ptr;
-        uint64_t* src64 = (uint64_t*)p;
-        *dst64 = *src64;
-        *(dst64+1) = *(src64+1);
-        seq_ptr[pos] = '\0';
-        
-        p += pos + 1;
-        *label = (*p - '0') & 1;
-        
-        while (*p != '\n' && *p) p++;
-        if (*p) p++;
-
-        *current = p;
-        return p;
-    }
-
-    do {
-        _mm256_storeu_si256((__m256i*)seq_ptr, data);
-        p += 32;
-        seq_ptr += 32;
-        
-        PREFETCH(p + 256);
-        
-        data = _mm256_loadu_si256((__m256i*)p);
-        is_delim = _mm256_or_si256(
-            _mm256_cmpeq_epi8(data, delim_vec),
-            _mm256_cmpeq_epi8(data, nl_vec)
-        );
-        mask = _mm256_movemask_epi8(is_delim);
-    } while (!mask);
-
-    uint32_t pos = __builtin_ctz(mask);
-    memcpy(seq_ptr, p, pos);
-    seq_ptr[pos] = '\0';
-    
-    p += pos + 1;
-    *label = (*p - '0') & 1;
-    
-    data = _mm256_loadu_si256((__m256i*)p);
-    mask = _mm256_movemask_epi8(_mm256_cmpeq_epi8(data, nl_vec));
-    p += __builtin_ctz(mask) + 1;
-    
+    while (*p && (*p == '\n' || *p == '\r')) p++;
     *current = p;
     return p;
 }
 
-INLINE char* write_alignment_output(char* buf_pos, const char* prev_seq, size_t prev_len, const char* seq, size_t seq_len, int prev_label, int label, const Alignment* result) {
-    buf_pos = fast_strcpy(buf_pos, prev_seq, prev_len); *buf_pos++ = ',';
-    buf_pos = fast_strcpy(buf_pos, seq, seq_len); *buf_pos++ = ',';
-    *buf_pos++ = (char)('0' + prev_label); *buf_pos++ = ',';
-    *buf_pos++ = (char)('0' + label); *buf_pos++ = ',';
-    buf_pos = int_to_str(buf_pos, result->score);
-    memcpy(buf_pos, ",\"('", 4); buf_pos += 4;
-    buf_pos = fast_strcpy(buf_pos, result->seq1_aligned, strlen(result->seq1_aligned));
-    memcpy(buf_pos, "', '", 4); buf_pos += 4;
-    buf_pos = fast_strcpy(buf_pos, result->seq2_aligned, strlen(result->seq2_aligned));
-    memcpy(buf_pos, "')\"\n", 4);
-    return buf_pos + 4;
-}
 
-INLINE void copy_full_sequence(char* dst, const char* src) {
-	for (size_t i = 0; i < MAX_SEQ_LEN; i += 32) {
-		_mm256_store_si256((__m256i*)(dst + i), _mm256_load_si256((__m256i*)(src + i)));
-	}
+INLINE char* write_alignment_output(char* buf_pos, const Data* prev, const Data* curr, const Alignment* result) {
+    size_t total_cols = 4 + write_format.data_count * 2;
+    bool first = true;
+    
+    for (size_t col = 0; col < total_cols; col++) {
+        // Add comma between fields
+        if (!first) {
+            *buf_pos++ = ',';
+        }
+        first = false;
+
+        if (col == write_format.seq1_pos) {
+            // Write first sequence
+            size_t len = strlen(prev->seq);
+            memcpy(buf_pos, prev->seq, len);
+            buf_pos += len;
+        }
+        else if (col == write_format.seq2_pos) {
+            // Write second sequence
+            size_t len = strlen(curr->seq);
+            memcpy(buf_pos, curr->seq, len);
+            buf_pos += len;
+        }
+        else if (col == write_format.score_pos) {
+            // Write alignment score
+            buf_pos = int_to_str(buf_pos, result->score);
+        }
+        else if (col == write_format.align_pos) {
+            // Write alignment result
+            buf_pos += sprintf(buf_pos, RESULT_CSV_ALIGN_FORMAT,
+                             result->seq1_aligned, result->seq2_aligned);
+        }
+        else {
+            // Handle data columns
+            for (size_t i = 0; i < write_format.data_count; i++) {
+                if (col == write_format.data1_pos[i]) {
+                    size_t len = strlen(prev->other_data);
+                    memcpy(buf_pos, prev->other_data, len);
+                    buf_pos += len;
+                    break;
+                }
+                else if (col == write_format.data2_pos[i]) {
+                    size_t len = strlen(curr->other_data);
+                    memcpy(buf_pos, curr->other_data, len);
+                    buf_pos += len;
+                    break;
+                }
+            }
+        }
+    }
+    
+    *buf_pos++ = '\n';
+    *buf_pos = '\0';
+    return buf_pos;
 }
 
 #endif

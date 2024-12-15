@@ -72,6 +72,7 @@ typedef HANDLE pthread_t;
 #include <stdint.h>
 #include <immintrin.h>
 #include <string.h>
+#include <stdbool.h>
 
 #define max(a, b) ((a) + (((b) - (a)) & ((b) - (a)) >> 31))
 #define min(a, b) ((a) - (((a) - (b)) & ((a) - (b)) >> 31))
@@ -87,7 +88,6 @@ typedef HANDLE pthread_t;
 #define BLOSUM_SIZE (20)
 #define MAX_SEQ_LEN (64)
 #define     SEQ_BUF (MAX_SEQ_LEN * 2)
-#define    MAX_LINE (MAX_SEQ_LEN * 4)
 
 #define         KiB (1ULL << 10)
 #define         MiB (KiB  << 10)
