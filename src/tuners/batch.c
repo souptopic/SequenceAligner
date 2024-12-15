@@ -54,7 +54,7 @@ INLINE int get_num_threads(void) {
     #endif
 }
 
-INLINE void* thread_pool_worker(void* arg) {
+INLINE T_Func thread_pool_worker(void* arg) {
     ThreadWork* work = (ThreadWork*)arg;
 
 	int thread_id = work - g_thread_work;
@@ -73,7 +73,7 @@ INLINE void* thread_pool_worker(void* arg) {
         
         sem_post(work->work_done);
     }
-    return NULL;
+	T_Ret(NULL);
 }
 
 INLINE void init_thread_pool(void) {
@@ -111,7 +111,7 @@ INLINE BatchTiming measure_batch_performance(char* start, char* end, size_t batc
     size_t seq_count = 1;
     
     char** seqs = (char**)malloc(sizeof(char*) * batch_size);
-    for (int i = 0; i < batch_size; i++) 
+    for (size_t i = 0; i < batch_size; i++) 
         seqs[i] = (char*)mat_aligned_alloc(CACHE_LINE, MAX_SEQ_LEN);
     int* labels = (int*)malloc(sizeof(int) * batch_size);
     
@@ -160,7 +160,7 @@ INLINE BatchTiming measure_batch_performance(char* start, char* end, size_t batc
     
     double time_taken = get_time() - start_time;
     
-    for (int i = 0; i < batch_size; i++) 
+    for (size_t i = 0; i < batch_size; i++) 
         mat_aligned_free(seqs[i]);
     free(seqs);
     free(labels);
@@ -172,7 +172,7 @@ int main(void) {
 	SET_HIGH_PRIORITY();
 
     #ifdef _WIN32
-    HANDLE hFile = CreateFileA(INPUT_FILE_MT, GENERIC_READ, FILE_SHARE_READ, NULL, 
+    HANDLE hFile = CreateFileA("../testing/datasets/avpdb_mega.csv", GENERIC_READ, FILE_SHARE_READ, NULL, 
                               OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
     HANDLE hMapping = CreateFileMapping(hFile, NULL, PAGE_READONLY, 0, 0, NULL);
     char* file_data = (char*)MapViewOfFile(hMapping, FILE_MAP_READ, 0, 0, 0);
@@ -180,7 +180,7 @@ int main(void) {
     GetFileSizeEx(hFile, &file_size);
     size_t data_size = file_size.QuadPart;
     #else
-    int fd = open(INPUT_FILE_MT, O_RDONLY);
+    int fd = open("../testing/datasets/avpdb_mega.csv", O_RDONLY);
     struct stat sb;
     fstat(fd, &sb);
     size_t data_size = sb.st_size;
@@ -217,7 +217,7 @@ int main(void) {
     for (size_t size = MIN_BATCH_SIZE; size <= MAX_BATCH_SIZE; size *= 2) {
         BatchTiming timing = measure_batch_performance(current, end, size, scoring);
         double rows_per_sec = TUNING_ROWS / timing.time;
-        printf("%8zu\t%.3f\t%.0f\n", size, timing.time, rows_per_sec);
+        printf("%8zu\t%.8f\t%.0f\n", size, timing.time, rows_per_sec);
         
         if (timing.time < best.time) {
             best = timing;
@@ -225,6 +225,8 @@ int main(void) {
     }
     
     printf("\nOptimal batch size: %zu (%.3f seconds)\n", best.batch_size, best.time);
+	printf("Run this program multiple times to get a more accurate result\n");
+	printf("\nYou can modify the BATCH_SIZE in src/mt.c to use this value\n");
 
     mat_aligned_free(scoring);
     

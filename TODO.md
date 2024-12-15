@@ -2,8 +2,8 @@
 - [x] Script for first time creation of _mega datasets
 
 - [ ] Create a user specification script 
-	- [x] Module for choosing the local dataset location, or add an open file dialog to existing code
-	- [ ] Module for finding the optimal values for BATCH_SIZE and WRITE_BUFFER_SIZE
+	- [x] Module for choosing the local dataset location, ~~or add an open file dialog to existing code~~ (finished with arguments)
+	- [x] Module for finding the optimal values for BATCH_SIZE and WRITE_BUFFER_SIZE
 	- [ ] Module for choosing the format of input and output csv
 
 - [ ] Perform a Similarity Analysis on the Results

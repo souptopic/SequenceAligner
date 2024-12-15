@@ -59,13 +59,25 @@ int main() {
     
     printf("\nBuffer Size      Time(s)    Throughput(MB/s)\n");
     printf("----------------------------------------\n");
+
+	double best_time = 999999.0;
+	size_t best_buffer = 0;
     
     for (size_t size = MIN_BUFFER; size <= MAX_BUFFER; size *= 2) {
         double time = test_buffer_size(size, test_file, output_file);
         double throughput = TEST_FILE_SIZE / (1024.0 * 1024.0) / time;
+
+		if (time < best_time) {
+			best_time = time;
+			best_buffer = size;
+		}
         
         printf("%6zu KB %12.3f %15.2f\n", size / 1024, time, throughput);
     }
+
+	printf("\nBest buffer size: %zu KB\n", best_buffer / 1024);
+	printf("Run this program multiple times to get a more accurate result\n");
+	printf("\nYou can modify the WRITE_BUFFER_SIZE at line 94 in include/common.h to use this value\n");
     
     remove(test_file);
     remove(output_file);

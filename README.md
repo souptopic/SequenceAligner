@@ -13,6 +13,7 @@ NOTE: This is a University Project.
   - [Windows Build](#windows-build)
   - [Linux or WSL2 Build](#linux-or-wsl2-build)
   - [Cross-Platform Build on Linux or WSL2](#cross-platform-build-on-linux-or-wsl2)
+  - [Tuning for potential faster runtime](#tuning-for-potential-faster-runtime)
 - [Cleaning](#cleaning)
 - [Usage](#usage)
 - [Format](#format)
@@ -55,6 +56,12 @@ make linux
 # Builds both Linux and Windows executables
 make
 ```
+
+### Tuning for potential faster runtime
+- Build tuners with `mingw32-make tune` or `make tune` and run the binaries
+- Results will be displayed and you can modify the variables they tune
+- The tuners will print out an explanation on how to do so
+
 
 ## Cleaning
 ```sh
