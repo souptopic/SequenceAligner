@@ -3,6 +3,7 @@
 A sequence alignment tool.
 
 NOTE: This is a University Project.
+  - Please, do not contribute or create issues with this repository.
 
 ## Table of Contents
 - [Requirements](#requirements)
