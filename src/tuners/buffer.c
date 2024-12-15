@@ -5,8 +5,8 @@
 #include <windows.h>
 
 #define TEST_FILE_SIZE (128 * 1024 * 1024)  // 100MB test file
-#define MIN_BUFFER (4 * 1024)               // 4KB
-#define MAX_BUFFER (128 * 1024 * 1024)      // 128MB
+#define 	MIN_BUFFER (4 * 1024)           // 4KB
+#define 	MAX_BUFFER (128 * 1024 * 1024)  // 128MB
 
 static double get_time(void) {
     LARGE_INTEGER freq, count;

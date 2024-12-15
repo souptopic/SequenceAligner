@@ -11,10 +11,10 @@ typedef HANDLE sem_t;
 #include <semaphore.h>
 #endif
 
-#define MAX_THREADS 16
-#define MIN_BATCH_SIZE 4096
-#define MAX_BATCH_SIZE 524288
-#define TUNING_ROWS 4000000
+#define    MAX_THREADS (16)
+#define MIN_BATCH_SIZE (4096)
+#define MAX_BATCH_SIZE (524288)
+#define    TUNING_ROWS (4000000)
 
 typedef struct {
     size_t batch_size;
@@ -66,9 +66,7 @@ INLINE T_Func thread_pool_worker(void* arg) {
         
         for (size_t i = work->start; i < work->end; i++) {
             AlignTask* task = &work->tasks[i];
-            align_sequences(task->seq1, strlen(task->seq1), 
-                          task->seq2, strlen(task->seq2), 
-                          task->scoring, task->result);
+            align_sequences(task->seq1, strlen(task->seq1), task->seq2, strlen(task->seq2), task->scoring, task->result);
         }
         
         sem_post(work->work_done);
@@ -111,8 +109,7 @@ INLINE BatchTiming measure_batch_performance(char* start, char* end, size_t batc
     size_t seq_count = 1;
     
     char** seqs = (char**)malloc(sizeof(char*) * batch_size);
-    for (size_t i = 0; i < batch_size; i++) 
-        seqs[i] = (char*)mat_aligned_alloc(CACHE_LINE, MAX_SEQ_LEN);
+    for (size_t i = 0; i < batch_size; i++) seqs[i] = (char*)mat_aligned_alloc(CACHE_LINE, MAX_SEQ_LEN);
     int* labels = (int*)malloc(sizeof(int) * batch_size);
     
     parse2(&current, seqs[0], &labels[0]);
@@ -160,8 +157,7 @@ INLINE BatchTiming measure_batch_performance(char* start, char* end, size_t batc
     
     double time_taken = get_time() - start_time;
     
-    for (size_t i = 0; i < batch_size; i++) 
-        mat_aligned_free(seqs[i]);
+    for (size_t i = 0; i < batch_size; i++) mat_aligned_free(seqs[i]);
     free(seqs);
     free(labels);
     
@@ -172,8 +168,7 @@ int main(void) {
 	SET_HIGH_PRIORITY();
 
     #ifdef _WIN32
-    HANDLE hFile = CreateFileA("../testing/datasets/avpdb_mega.csv", GENERIC_READ, FILE_SHARE_READ, NULL, 
-                              OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+    HANDLE hFile = CreateFileA("../testing/datasets/avpdb_mega.csv", GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
     HANDLE hMapping = CreateFileMapping(hFile, NULL, PAGE_READONLY, 0, 0, NULL);
     char* file_data = (char*)MapViewOfFile(hMapping, FILE_MAP_READ, 0, 0, 0);
     LARGE_INTEGER file_size;
@@ -218,10 +213,7 @@ int main(void) {
         BatchTiming timing = measure_batch_performance(current, end, size, scoring);
         double rows_per_sec = TUNING_ROWS / timing.time;
         printf("%8zu\t%.8f\t%.0f\n", size, timing.time, rows_per_sec);
-        
-        if (timing.time < best.time) {
-            best = timing;
-        }
+        if (timing.time < best.time) best = timing;
     }
     
     printf("\nOptimal batch size: %zu (%.3f seconds)\n", best.batch_size, best.time);

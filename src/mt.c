@@ -189,6 +189,7 @@ int main(int argc, char** argv) {
         free(results);
     }
 
+	// Will be moved below write once buffered writes are implemented
     double endt = get_time();
 
     #ifdef MODE_WRITE

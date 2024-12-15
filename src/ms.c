@@ -64,6 +64,7 @@ int main(int argc, char** argv) {
         prev_label = label;
     }
 
+	// Will be moved below write once buffered writes are implemented
     double endt = get_time();
     
 	#ifdef MODE_WRITE
