@@ -1,7 +1,8 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define 	  MAX_PATH (260)
+#define       MAX_PATH (260)
+
 #define     INPUT_FILE "testing/datasets/avpdb.csv"
 #define  INPUT_FILE_MT "testing/datasets/avpdb_mega.csv"
 #define    OUTPUT_FILE "results/results.csv"
@@ -25,10 +26,10 @@ typedef HANDLE pthread_t;
 #define T_Func DWORD WINAPI
 #define T_Ret(x) return (DWORD)(size_t)(x)
 
-#define    pthread_create(t, _, sr, a) (void)(*t = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)sr, a, 0, NULL))
-#define      pthread_join(t, _) WaitForSingleObject(t, INFINITE)
-#define        PIN_THREAD(t_id) SetThreadAffinityMask(GetCurrentThread(), (DWORD_PTR)1 << t_id)
-#define SET_HIGH_PRIORITY()     SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS)
+#define pthread_create(t, _, sr, a) (void)(*t = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)sr, a, 0, NULL))
+#define          pthread_join(t, _) WaitForSingleObject(t, INFINITE)
+#define            PIN_THREAD(t_id) SetThreadAffinityMask(GetCurrentThread(), (DWORD_PTR)1 << t_id)
+#define         SET_HIGH_PRIORITY() SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS)
 
 #define mat_aligned_free(p) _aligned_free(p)
 
@@ -38,6 +39,7 @@ typedef HANDLE pthread_t;
 #else
 
 #define _GNU_SOURCE
+#define    O_BINARY (0)
 
 #include <time.h>
 #include <unistd.h>
@@ -48,10 +50,8 @@ typedef HANDLE pthread_t;
 #include <sys/sysinfo.h>
 #include <pthread.h>
 
-#define O_BINARY (0)
-
-#define T_Func void*
-#define T_Ret(x) return (x)
+#define T_Func    void*
+#define  T_Ret(x) return (x)
 
 #define PIN_THREAD(t_id) do { \
     cpu_set_t cpuset; \
@@ -76,22 +76,24 @@ typedef HANDLE pthread_t;
 #define max(a, b) ((a) + (((b) - (a)) & ((b) - (a)) >> 31))
 #define min(a, b) ((a) - (((a) - (b)) & ((a) - (b)) >> 31))
 
-#define CACHE_LINE            (64)
-#define INLINE                 static inline
-#define   LIKELY(x)            __builtin_expect(!!(x), 1)
-#define UNLIKELY(x)            __builtin_expect(!!(x), 0)
-#define PREFETCH(x)            _mm_prefetch((const char*)(x), _MM_HINT_T0)
-#define ALIGN                  __attribute__((aligned(CACHE_LINE)))
+#define   LIKELY(x) __builtin_expect(!!(x), 1)
+#define UNLIKELY(x) __builtin_expect(!!(x), 0)
+#define PREFETCH(x) _mm_prefetch((const char*)(x), _MM_HINT_T0)
 
-#define BLOSUM_SIZE           (20)
-#define MAX_SEQ_LEN           (64)
-#define ALIGNMENT_BUFFER_SIZE (MAX_SEQ_LEN * 2)
-#define MAX_LINE_SIZE         (MAX_SEQ_LEN * 4)
+#define  CACHE_LINE (64)
+#define      INLINE static inline
+#define       ALIGN __attribute__((aligned(CACHE_LINE)))
 
-#define KiB                   (1ULL << 10)
-#define MiB                   (KiB  << 10)
-#define GiB                   (MiB  << 10)
-#define WRITE_BUFFER_SIZE     (2 * MiB)
+#define BLOSUM_SIZE (20)
+#define MAX_SEQ_LEN (64)
+#define     SEQ_BUF (MAX_SEQ_LEN * 2)
+#define    MAX_LINE (MAX_SEQ_LEN * 4)
+
+#define         KiB (1ULL << 10)
+#define         MiB (KiB  << 10)
+#define         GiB (MiB  << 10)
+
+#define   WRITE_BUF (2 * MiB)
 
 INLINE void* mat_aligned_alloc(size_t alignment, size_t size) {
 #ifdef _WIN32
@@ -108,8 +110,8 @@ typedef struct ALIGN {
 } ScoringMatrix;
 
 typedef struct {
-    char seq1_aligned[ALIGNMENT_BUFFER_SIZE] ALIGN;
-    char seq2_aligned[ALIGNMENT_BUFFER_SIZE] ALIGN;
+    char seq1_aligned[SEQ_BUF] ALIGN;
+    char seq2_aligned[SEQ_BUF] ALIGN;
     int score;
 } Alignment;
 

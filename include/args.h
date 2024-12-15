@@ -4,18 +4,18 @@
 #include "common.h"
 
 typedef struct {
-	char* file_data;
-	size_t data_size;
-	#ifdef _WIN32
-	HANDLE hFile;
-	HANDLE hMapping;
-	#else
-	int fd;
-	#endif
-    #ifdef MODE_WRITE
-    int fd_out;
-    char* write_buffer;
-    char* buf_pos;
+      char* file_data;
+    size_t  data_size;
+    #ifdef  _WIN32
+    HANDLE  hFile;
+    HANDLE  hMapping;
+     #else
+       int  fd;
+    #endif
+    #ifdef  MODE_WRITE
+       int  fd_out;
+      char* write_buffer;
+      char* buf_pos;
     #endif
 } Args;
 
@@ -28,7 +28,7 @@ static void validate_path(const char* path, const char* type) {
     const char* ext = strrchr(path, '.');
     if (!ext || strcmp(ext, ".csv") != 0) {
         printf("Error: Only .csv files allowed\n");
-		printf("%s\n", path);
+        printf("%s\n", path);
         exit(1);
     }
 
@@ -119,10 +119,10 @@ static void show_help(const char* prog_name, const char* input_default
 INLINE Args parse_args(int argc, char** argv) {
     Args args = {0};
 
-	const char* input_default = strstr(argv[0], "mt") ? INPUT_FILE_MT : INPUT_FILE;
-	#ifdef MODE_WRITE
-	const char* output_default = strstr(argv[0], "mt") ? OUTPUT_FILE_MT : OUTPUT_FILE;
-	#endif
+    const char* input_default = strstr(argv[0], "mt") || strstr(argv[0], "batch") ? INPUT_FILE_MT : INPUT_FILE;
+    #ifdef MODE_WRITE
+    const char* output_default = strstr(argv[0], "mt") ? OUTPUT_FILE_MT : OUTPUT_FILE;
+    #endif
     
     if (argc > 1 && (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)) {
         show_help(argv[0], input_default
@@ -172,7 +172,7 @@ INLINE Args parse_args(int argc, char** argv) {
     const char* input_file = argv[1] ? argv[1] : full_input_path;
     check_directory(input_file, "input");
     
-	#ifdef _WIN32
+    #ifdef _WIN32
     if (GetFileAttributesA(input_file) == INVALID_FILE_ATTRIBUTES) {
     #else
     if (access(input_file, F_OK) != 0) {
@@ -204,7 +204,7 @@ INLINE Args parse_args(int argc, char** argv) {
 
     #ifdef MODE_WRITE
     args.fd_out = open(output_file, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0644);
-    args.write_buffer = (char*)mat_aligned_alloc(CACHE_LINE, WRITE_BUFFER_SIZE);
+    args.write_buffer = (char*)mat_aligned_alloc(CACHE_LINE, WRITE_BUF);
     args.buf_pos = args.write_buffer;
     const char* header = "sequence1,sequence2,label1,label2,score,alignment\n";
     args.buf_pos = fast_strcpy(args.write_buffer, header, strlen(header));
@@ -214,19 +214,19 @@ INLINE Args parse_args(int argc, char** argv) {
 }
 
 INLINE void free_args(Args* args) {
-	#ifdef MODE_WRITE
-	close(args->fd_out);
-	mat_aligned_free(args->write_buffer);
-	#endif
+    #ifdef MODE_WRITE
+    close(args->fd_out);
+    mat_aligned_free(args->write_buffer);
+    #endif
 
-	#ifdef _WIN32
-	UnmapViewOfFile(args->file_data);
-	CloseHandle(args->hMapping);
-	CloseHandle(args->hFile);
-	#else
-	munmap(args->file_data, args->data_size);
-	close(args->fd);
-	#endif
+    #ifdef _WIN32
+    UnmapViewOfFile(args->file_data);
+    CloseHandle(args->hMapping);
+    CloseHandle(args->hFile);
+    #else
+    munmap(args->file_data, args->data_size);
+    close(args->fd);
+    #endif
 }
 
 #endif

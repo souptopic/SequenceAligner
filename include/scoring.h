@@ -7,10 +7,12 @@
 #define GAP_PENALTY       (-4)
 #define AMINO_LOOKUP_SIZE (128)
 
-static              __m256i FIRST_ROW_INDICES;
-static              __m256i GAP_PENALTY_VEC;
+static __m256i FIRST_ROW_INDICES;
+static __m256i GAP_PENALTY_VEC;
+
 static int          AMINO_LOOKUP[AMINO_LOOKUP_SIZE];
-static const char   AMINO_ACIDS [] = "ARNDCQEGHILKMFPSTWYV";
+static const char   AMINO_ACIDS[] = "ARNDCQEGHILKMFPSTWYV";
+
 static const int8_t next_i[] = {-1, -1, 0};  // DIAG, UP, LEFT
 static const int8_t next_j[] = {-1, 0, -1};
 

@@ -5,12 +5,12 @@ int main(int argc, char** argv) {
     PIN_THREAD(0);
     SET_HIGH_PRIORITY();
 
-	Args args = parse_args(argc, argv);
-	#ifdef MODE_WRITE
-	int fd_out = args.fd_out;
-	char* write_buffer = args.write_buffer;
-	char* buf_pos = args.buf_pos;
-	#endif
+    Args args = parse_args(argc, argv);
+    #ifdef MODE_WRITE
+    int fd_out = args.fd_out;
+    char* write_buffer = args.write_buffer;
+    char* buf_pos = args.buf_pos;
+    #endif
 
     char* seq = (char*)mat_aligned_alloc(CACHE_LINE, MAX_SEQ_LEN);
     char* prev_seq = (char*)mat_aligned_alloc(CACHE_LINE, MAX_SEQ_LEN);
@@ -21,7 +21,7 @@ int main(int argc, char** argv) {
     char* end = args.file_data + args.data_size;
     
     current = skip_header(current, end);
-	
+    
     init_length_lookup();
 
     parse1(&current, prev_seq, &prev_label);
@@ -32,17 +32,17 @@ int main(int argc, char** argv) {
 
     double start = get_time();
     while (current < end && *current) {
-        PREFETCH(current + MAX_LINE_SIZE * 2);
+        PREFETCH(current + MAX_LINE * 2);
 
         #ifdef MODE_WRITE
-        PREFETCH(buf_pos + MAX_LINE_SIZE * 2);
+        PREFETCH(buf_pos + MAX_LINE * 2);
         #endif
         
         parse1(&current, seq, &label);
         align_sequences(prev_seq, (int)strlen(prev_seq), seq, (int)strlen(seq), scoring, result);
 
         #ifdef MODE_WRITE
-        if (UNLIKELY((size_t)(buf_pos - write_buffer) > WRITE_BUFFER_SIZE - MAX_LINE_SIZE * 4)) {
+        if (UNLIKELY((size_t)(buf_pos - write_buffer) > WRITE_BUF - MAX_LINE * 4)) {
             write(fd_out, write_buffer, buf_pos - write_buffer);
             buf_pos = write_buffer;
         }
@@ -54,14 +54,14 @@ int main(int argc, char** argv) {
         prev_label = label;
     }
 
-	// Will be moved below write once buffered writes are implemented
+    // Will be moved below write once buffered writes are implemented
     double endt = get_time();
     
-	#ifdef MODE_WRITE
-	write(fd_out, write_buffer, buf_pos - write_buffer);
-	#endif
+    #ifdef MODE_WRITE
+    write(fd_out, write_buffer, buf_pos - write_buffer);
+    #endif
 
-	free_args(&args);
+    free_args(&args);
 
     mat_aligned_free(seq);
     mat_aligned_free(prev_seq);
