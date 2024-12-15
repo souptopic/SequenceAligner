@@ -20,18 +20,8 @@ int main(int argc, char** argv) {
     char* current = args.file_data;
     char* end = args.file_data + args.data_size;
     
-    // Skip header
-    __m256i newline = _mm256_set1_epi8('\n');
-    while (current < end) {
-        __m256i data = _mm256_loadu_si256((__m256i*)current);
-        int mask = _mm256_movemask_epi8(_mm256_cmpeq_epi8(data, newline));
-        if (mask) {
-            current += __builtin_ctz(mask) + 1;
-            break;
-        }
-        current += 32;
-    }
-
+    current = skip_header(current, end);
+	
     init_length_lookup();
 
     parse1(&current, prev_seq, &prev_label);

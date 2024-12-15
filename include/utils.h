@@ -310,3 +310,16 @@ INLINE char* write_alignment_output(char* buf_pos, const char* prev_seq, size_t 
     return buf_pos + 4;
 }
 #endif
+
+INLINE char* skip_header(char* current, char* end) {
+    __m256i newline = _mm256_set1_epi8('\n');
+    while (current < end) {
+        __m256i data = _mm256_loadu_si256((__m256i*)current);
+        int mask = _mm256_movemask_epi8(_mm256_cmpeq_epi8(data, newline));
+        if (mask) {
+            return current + __builtin_ctz(mask) + 1;
+        }
+        current += 32;
+    }
+    return current;
+}

@@ -186,11 +186,6 @@ INLINE Args parse_args(int argc, char** argv) {
     check_directory(output_file, "output");
     #endif
 
-	printf("Input file: %s\n", input_file);
-	#ifdef MODE_WRITE
-	printf("Output file: %s\n", output_file);
-	#endif
-
     #ifdef _WIN32
     args.hFile = CreateFileA(input_file, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
     args.hMapping = CreateFileMapping(args.hFile, NULL, PAGE_READONLY, 0, 0, NULL);
