@@ -1,6 +1,6 @@
 # Sequence Aligner
 
-A "fast"? sequence alignment tool.
+A sequence alignment tool.
 
 NOTE: This is a University Project.
 
