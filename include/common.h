@@ -105,6 +105,24 @@ INLINE void* mat_aligned_alloc(size_t alignment, size_t size) {
 #endif
 }
 
+INLINE double get_time(void) {
+#ifdef _WIN32
+    static double freq_inv = 0.0;
+    if (freq_inv == 0.0) {
+        LARGE_INTEGER freq;
+        QueryPerformanceFrequency(&freq);
+        freq_inv = 1.0 / (double)freq.QuadPart;
+    }
+    LARGE_INTEGER count;
+    QueryPerformanceCounter(&count);
+    return (double)count.QuadPart * freq_inv;
+#else
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ts.tv_sec + ts.tv_nsec * 1e-9;
+#endif
+}
+
 typedef struct ALIGN {
     int matrix[BLOSUM_SIZE][BLOSUM_SIZE];
 } ScoringMatrix;

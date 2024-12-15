@@ -1,6 +1,8 @@
 #ifndef THREAD_H
 #define THREAD_H
 
+#include "common.h"
+
 #define MAX_THREADS (16)
 #define  BATCH_SIZE (65536)
 

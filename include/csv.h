@@ -3,29 +3,65 @@
 
 #include "align.h"
 
-INLINE double get_time(void) {
-#ifdef _WIN32
-    static double freq_inv = 0.0;
-    if (freq_inv == 0.0) {
-        LARGE_INTEGER freq;
-        QueryPerformanceFrequency(&freq);
-        freq_inv = 1.0 / (double)freq.QuadPart;
-    }
-    LARGE_INTEGER count;
-    QueryPerformanceCounter(&count);
-    return (double)count.QuadPart * freq_inv;
-#else
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return ts.tv_sec + ts.tv_nsec * 1e-9;
+//define MAX_SEQ_LEN in common.h, line 88, by default it's (64)
+
+/* Format for the CSV file that is being read.
+ * The CSV lines must be consistent (i.e. same number of columns and same data types in each column).
+ * A CSV line must only have one sequence, where the index must be provided.
+ * It can contain any number other data columns, as those will be ignored. */
+#define READ_CSV_HEADER "sequence,label\n"
+#define READ_CSV_SEQ_POS (0)
+
+/* Format for the CSV file that is being written.
+ * Here, you can choose what the result CSV will look like.
+ * You must provide indexes for the sequences, score and alignment.
+ * If, for example, the fifth line is being read, that means SEQ1 is your 5th sequence, SEQ2 will be the 6th.
+ * The unimportant data columns will be copied in the result column in a way that there will be the least amount of columns.*/
+#ifdef MODE_WRITE
+#define RESULT_CSV_HEADER "sequence1,sequence2,label1,label2,score,alignment\n"
+#define RESULT_CSV_SEQ1_POS (0)
+#define RESULT_CSV_SEQ2_POS (1)
+#define RESULT_CSV_SCORE_POS (4)
+#define RESULT_CSV_ALIGN_POS (5)
 #endif
-}
 
-INLINE void copy_full_sequence(char* dst, const char* src) {
-    _mm256_store_si256((__m256i*)dst, _mm256_load_si256((__m256i*)src));
-    _mm256_store_si256((__m256i*)(dst + 32), _mm256_load_si256((__m256i*)(src + 32)));
-}
+/* The result of this example format will be exactly like this
+READ_CSV
+sequence,data
+KPVSLS,0
+LNNSRA,0
+HCKFWF,1
+...
 
+RESULT_CSV
+sequence1,sequence2,data1,data2,score,alignment
+KPVSLS,LNNSRA,0,0,-5,"('KPVSLS', 'LNNSRA')"
+LNNSRA,HCKFWF,0,1,-14,"('LNNSRA', 'HCKFWF')"
+...
+
+If we say that result positions are like this:
+SEQ1 = 0, SEQ2 = 1, SCORE = 2, ALIGN = 3
+Then the result will be like this:
+KPVSLS,LNNSRA,-5,"('KPVSLS', 'LNNSRA')",0,0
+
+You can see that the data columns were copied to the last column untouched.
+You can have as many data columns as you want, they will be copied to whatever empty space is available.
+However, the result format must have two times the data columns (data1, data2)
+This is because the algorithm aligns the current sequence with the next one and must write the data for both sequences.
+*/
+
+INLINE char* skip_header(char* current, char* end) {
+    __m256i newline = _mm256_set1_epi8('\n');
+    while (current < end) {
+        __m256i data = _mm256_loadu_si256((__m256i*)current);
+        int mask = _mm256_movemask_epi8(_mm256_cmpeq_epi8(data, newline));
+        if (mask) {
+            return current + __builtin_ctz(mask) + 1;
+        }
+        current += 32;
+    }
+    return current;
+}
 
 INLINE char* fast_strcpy(char* dst, const char* src, size_t len) {
     size_t i = 0;
@@ -309,17 +345,11 @@ INLINE char* write_alignment_output(char* buf_pos, const char* prev_seq, size_t 
     memcpy(buf_pos, "')\"\n", 4);
     return buf_pos + 4;
 }
-#endif
 
-INLINE char* skip_header(char* current, char* end) {
-    __m256i newline = _mm256_set1_epi8('\n');
-    while (current < end) {
-        __m256i data = _mm256_loadu_si256((__m256i*)current);
-        int mask = _mm256_movemask_epi8(_mm256_cmpeq_epi8(data, newline));
-        if (mask) {
-            return current + __builtin_ctz(mask) + 1;
-        }
-        current += 32;
-    }
-    return current;
+INLINE void copy_full_sequence(char* dst, const char* src) {
+	for (size_t i = 0; i < MAX_SEQ_LEN; i += 32) {
+		_mm256_store_si256((__m256i*)(dst + i), _mm256_load_si256((__m256i*)(src + i)));
+	}
 }
+
+#endif

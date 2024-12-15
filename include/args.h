@@ -1,7 +1,7 @@
 #ifndef ARGS_H
 #define ARGS_H
 
-#include "common.h"
+#include "csv.h"
 
 typedef struct {
       char* file_data;
@@ -206,7 +206,7 @@ INLINE Args parse_args(int argc, char** argv) {
     args.fd_out = open(output_file, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0644);
     args.write_buffer = (char*)mat_aligned_alloc(CACHE_LINE, WRITE_BUF);
     args.buf_pos = args.write_buffer;
-    const char* header = "sequence1,sequence2,label1,label2,score,alignment\n";
+    const char* header = RESULT_CSV_HEADER;
     args.buf_pos = fast_strcpy(args.write_buffer, header, strlen(header));
     #endif
 
