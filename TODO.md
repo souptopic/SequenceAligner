@@ -19,4 +19,4 @@
 
 - [ ] Add cases for AVX-512 and for neither AVX2 and AVX-512
 
-- [ ] Comment cursed code, better code organization and cleanup
+- [ ] Comment unclear code
