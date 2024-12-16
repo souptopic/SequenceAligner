@@ -22,12 +22,12 @@ int main(int argc, char** argv) {
     current = skip_header(current, end);
     
 	init_format();
-
     Alignment* result = (Alignment*)mat_aligned_alloc(CACHE_LINE, sizeof(Alignment));
     ScoringMatrix* scoring = (ScoringMatrix*)mat_aligned_alloc(CACHE_LINE, sizeof(ScoringMatrix));
     init_scoring_matrix(scoring);
 
     double start = get_time();
+	
     parse_csv_line(&current, prev_seq, prev_data);
     while (current < end && *current) {
         parse_csv_line(&current, seq, data);

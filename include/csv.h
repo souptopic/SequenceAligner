@@ -8,50 +8,70 @@
 /* Format for the CSV file that is being read.
  * The CSV lines must be consistent (i.e. same number of columns and same data types in each column).
  * A CSV line must only have one sequence, where the index must be provided.
- * It can contain any number other data columns, as those will be ignored. */
+ * It can contain any number other data columns, as those will be ignored.
+EXAMPLE:
+"animal,part,sequence,id" -> READ_CSV_SEQ_POS = 2    (starts from 0) */
 #define READ_CSV_HEADER "sequence,label\n"
 #define READ_CSV_SEQ_POS (0)
 
 /* Format for the CSV file that is being written.
- * Here, you can choose what the result CSV will look like.
+ * Here, you can choose what the result (write) CSV will look like.
  * You must provide indexes for the sequences, score and alignment.
- * If, for example, the fifth line is being read, that means SEQ1 is your 5th sequence, SEQ2 will be the 6th.
+ * If, for example, the fifth csv line is being read, that means SEQ1 is your 5th sequence, SEQ2 will be the 6th.
  * The unimportant data columns will be copied so that empty columns are filled first, then at the end.
- * You can use as much unimportant data columns as you want, however the results data columns must be 2x read data columns */
+ * So your format must follow that logic.
+ * You can use as much unimportant data columns as you want, however the results data columns must be 2x the read data columns 
+ * Another important rule is that one data column (1) must be before data column 2 of same name (2).
+ * E.G. If READ: animal,part,id, then RESULT animal1,animal2,part1,part2,id1,id2.
+ * You can visually imagine the READ_HEADER being copied and put below itself,
+ * adding 1 to original, 2 to copy, then shifted to right by one place.
+ * Then, you can add score and alignment (any name) so that it isn't between a pair.
+READ HEADER: a,b,c (let's say c is sequence in this example, and a and b is unimportant data)
+-----
+a1,b1,c1
+a2,b2,c2
+-----
+a1,b1,c1
+ a2,b2,c2
+-----
+a1a2,b1b2,c1c2
+------
+a1,a2,b1,b2,c1,c2
+------
+a1,a2,alignment,b1,b2,score,c1,c2 <- WRITE HEADER
+
+EXAMPLE THAT PAIRS WITH READ EXAMPLES:
+"animal1,animal2,alignment,part1,part2,sequence1,sequence2,id1,id2,score" -> WRITE_CSV_SEQ1_POS = 4, WRITE_CSV_SEQ2_POS = 5,
+                                                                             WRITE_CSV_SCORE_POS = 9, WRITE_CSV_ALIGN_POS = 2*/
 #ifdef MODE_WRITE
-#define RESULT_CSV_HEADER "sequence1,sequence2,label1,label2,score,alignment\n"
-#define RESULT_CSV_SEQ1_POS (0)
-#define RESULT_CSV_SEQ2_POS (1)
-#define RESULT_CSV_SCORE_POS (4)
-#define RESULT_CSV_ALIGN_POS (5)
-#define RESULT_CSV_ALIGN_FORMAT "\"('%s', '%s')\""
+#define WRITE_CSV_HEADER "sequence1,sequence2,label1,label2,score,alignment\n"
+#define WRITE_CSV_SEQ1_POS (0)
+#define WRITE_CSV_SEQ2_POS (1)
+#define WRITE_CSV_SCORE_POS (4)
+#define WRITE_CSV_ALIGN_POS (5)
+#define WRITE_CSV_ALIGN_FORMAT "\"('%s', '%s')\""
 #define ALIGN_STRL (3 + SEQ_BUF + 4 + SEQ_BUF + 3) // SEQ_BUF = MAX_SEQ_LEN * 2 // because of extra possible '-' when aligning
 #endif
 
-/* The result of this example format will be exactly like this
+/* The result of the default format will be exactly like this
 READ_CSV
-sequence,data
+sequence,label
 KPVSLS,0
 LNNSRA,0
 HCKFWF,1
 ...
 
-RESULT_CSV
-sequence1,sequence2,data1,data2,score,alignment
+WRITE_CSV
+sequence1,sequence2,label1,label2,score,alignment
 KPVSLS,LNNSRA,0,0,-5,"('KPVSLS', 'LNNSRA')"
 LNNSRA,HCKFWF,0,1,-14,"('LNNSRA', 'HCKFWF')"
 ...
 
 If we say that result positions are like this:
 SEQ1 = 0, SEQ2 = 1, SCORE = 2, ALIGN = 3
+sequence1,sequence2,score,alignment,label1,label2
 Then the result will be like this:
-KPVSLS,LNNSRA,-5,"('KPVSLS', 'LNNSRA')",0,0
-
-You can see that the data columns were copied to the last column untouched.
-You can have as many data columns as you want, they will be copied to whatever empty space is available.
-However, the result format must have two times the data columns (data1, data2)
-This is because the algorithm aligns the current sequence with the next one and must write the data for both sequences.
-*/
+KPVSLS,LNNSRA,-5,"('KPVSLS', 'LNNSRA')",0,0*/
 
 typedef struct {
     const char* seq;
@@ -173,16 +193,16 @@ INLINE void init_format() {
     }
 
     // Write format analysis
-    header = RESULT_CSV_HEADER;
+    header = WRITE_CSV_HEADER;
     size_t write_cols = 1;
     for(const char* p = header; *p && *p != '\n'; p++) {
         if(*p == ',') write_cols++;
     }
     
-    write_format.seq1_pos = RESULT_CSV_SEQ1_POS;
-    write_format.seq2_pos = RESULT_CSV_SEQ2_POS;
-    write_format.score_pos = RESULT_CSV_SCORE_POS;
-    write_format.align_pos = RESULT_CSV_ALIGN_POS;
+    write_format.seq1_pos = WRITE_CSV_SEQ1_POS;
+    write_format.seq2_pos = WRITE_CSV_SEQ2_POS;
+    write_format.score_pos = WRITE_CSV_SCORE_POS;
+    write_format.align_pos = WRITE_CSV_ALIGN_POS;
     
     // Calculate how many data column pairs we need
     write_format.data_count = read_format.data_count;
@@ -209,6 +229,42 @@ INLINE void init_format() {
                     break;
                 }
             }
+        }
+    }
+
+	// Format validation
+	if (write_format.data_count * 2 > write_cols - 4) {
+		fprintf(stderr, "Error: Not enough columns for data pairs\n");
+		exit(1);
+	}
+
+	// Validate position bounds
+	if (write_format.seq1_pos >= write_cols || 
+		write_format.seq2_pos >= write_cols ||
+		write_format.score_pos >= write_cols ||
+		write_format.align_pos >= write_cols) {
+		fprintf(stderr, "Error: Column position out of bounds\n");
+		exit(1);
+	}
+
+	// Validate data column pairs order
+    for(size_t i = 0; i < write_format.data_count; i++) {
+        if (write_format.data1_pos[i] >= write_format.data2_pos[i]) {
+            fprintf(stderr, "Error: Data column 1 must come before column 2 for each pair\n");
+            exit(1);
+        }
+    }
+
+    // Validate no data pairs are split by sequence/score/alignment
+    for(size_t i = 0; i < write_format.data_count; i++) {
+        size_t pos1 = write_format.data1_pos[i];
+        size_t pos2 = write_format.data2_pos[i];
+        if ((pos1 < write_format.seq1_pos && pos2 > write_format.seq1_pos) ||
+            (pos1 < write_format.seq2_pos && pos2 > write_format.seq2_pos) ||
+            (pos1 < write_format.score_pos && pos2 > write_format.score_pos) ||
+            (pos1 < write_format.align_pos && pos2 > write_format.align_pos)) {
+            fprintf(stderr, "Error: Data pairs cannot be split by sequence/score/alignment columns\n");
+            exit(1);
         }
     }
 
@@ -271,7 +327,7 @@ INLINE char* write_alignment_output(char* buf_pos, const Data* prev, const Data*
         }
         else if (col == write_format.align_pos) {
             // Write alignment result
-            buf_pos += sprintf(buf_pos, RESULT_CSV_ALIGN_FORMAT,
+            buf_pos += sprintf(buf_pos, WRITE_CSV_ALIGN_FORMAT,
                              result->seq1_aligned, result->seq2_aligned);
         }
         else {

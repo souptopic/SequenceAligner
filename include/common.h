@@ -73,6 +73,7 @@ typedef HANDLE pthread_t;
 #include <immintrin.h>
 #include <string.h>
 #include <stdbool.h>
+#include <limits.h>
 
 #define max(a, b) ((a) + (((b) - (a)) & ((b) - (a)) >> 31))
 #define min(a, b) ((a) - (((a) - (b)) & ((a) - (b)) >> 31))

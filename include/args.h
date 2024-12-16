@@ -21,21 +21,21 @@ typedef struct {
 
 static void validate_path(const char* path, const char* type) {
     if (strlen(path) >= MAX_PATH) {
-        printf("Error: %s path too long\n", type);
+        fprintf(stderr, "Error: %s path too long\n", type);
         exit(1);
     }
 
     const char* ext = strrchr(path, '.');
     if (!ext || strcmp(ext, ".csv") != 0) {
-        printf("Error: Only .csv files allowed\n");
-        printf("%s\n", path);
+        fprintf(stderr, "Error: Only .csv files allowed\n");
+        fprintf(stderr, "%s\n", path);
         exit(1);
     }
 
     const char* invalid_chars = "<>:\"|?*";
     for (const char* c = invalid_chars; *c; c++) {
         if (strchr(path, *c)) {
-            printf("Error: Invalid character in path: '%c'\n", *c);
+            fprintf(stderr, "Error: Invalid character in path: '%c'\n", *c);
             exit(1);
         }
     }
@@ -48,7 +48,7 @@ static void check_symlink(const char* path) {
     if (hFind != INVALID_HANDLE_VALUE) {
         if (findData.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
             FindClose(hFind);
-            printf("Error: Symlinks not allowed\n");
+            fprintf(stderr, "Error: Symlinks not allowed\n");
             exit(1);
         }
         FindClose(hFind);
@@ -57,7 +57,7 @@ static void check_symlink(const char* path) {
     struct stat st;
     if (lstat(path, &st) == 0) {
         if (S_ISLNK(st.st_mode)) {
-            printf("Error: Symlinks not allowed\n");
+            fprintf(stderr, "Error: Symlinks not allowed\n");
             exit(1);
         }
     }
@@ -68,13 +68,13 @@ static void check_directory(const char* path, const char* type) {
     #ifdef _WIN32
     DWORD attrs = GetFileAttributesA(path);
     if (attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY)) {
-        printf("Error: %s path is a directory\n", type);
+        fprintf(stderr, "Error: %s path is a directory\n", type);
         exit(1);
     }
     #else
     struct stat st;
     if (stat(path, &st) == 0 && S_ISDIR(st.st_mode)) {
-        printf("Error: %s path is a directory\n", type);
+        fprintf(stderr, "Error: %s path is a directory\n", type);
         exit(1);
     }
     #endif
@@ -82,18 +82,53 @@ static void check_directory(const char* path, const char* type) {
 
 static char* compute_base_path(const char* argv0) {
     static char base_path[MAX_PATH];
-    strncpy(base_path, argv0, MAX_PATH - 1);
-    base_path[MAX_PATH - 1] = '\0';
+    static char resolved_path[MAX_PATH];
+    memset(base_path, 0, sizeof(base_path));
+    memset(resolved_path, 0, sizeof(resolved_path));
 
+    if (strlen(argv0) >= MAX_PATH) {
+        fprintf(stderr, "Error: Program path too long\n");
+        exit(1);
+    }
+
+    #ifdef _WIN32
+    if (!_fullpath(resolved_path, argv0, MAX_PATH)) {
+        fprintf(stderr, "Error: Could not resolve program path\n");
+        exit(1);
+    }
+    strncpy(base_path, resolved_path, MAX_PATH - 1);
+    
     for (char* p = base_path; *p; p++) {
         if (*p == '\\') *p = '/';
     }
+    #else 
+
+    char cwd[MAX_PATH];
+    if (getcwd(cwd, sizeof(cwd)) == NULL) {
+        fprintf(stderr, "Error: Could not get current directory\n");
+        exit(1);
+    }
+
+    if (strlen(cwd) + strlen(argv0) + 2 >= MAX_PATH) {
+        fprintf(stderr, "Error: Combined path too long\n");
+        exit(1);
+    }
+
+    snprintf(base_path, MAX_PATH, "%s/%s", cwd, argv0);
+    #endif
+
+    base_path[MAX_PATH - 1] = '\0';
 
     char* last_slash = strrchr(base_path, '/');
-    if (last_slash) *last_slash = '\0';
-
-    last_slash = strrchr(base_path, '/');
-    if (last_slash) *last_slash = '\0';
+    if (last_slash) {
+        *last_slash = '\0';
+        
+        // Check for bin directory
+        last_slash = strrchr(base_path, '/');
+        if (last_slash && strcmp(last_slash + 1, "bin") == 0) {
+            *last_slash = '\0';
+        }
+    }
 
     return base_path;
 }
@@ -158,13 +193,13 @@ INLINE Args parse_args(int argc, char** argv) {
     #endif
 
     if (strlen(full_input_path) >= MAX_PATH) {
-        printf("Error: Computed input path too long\n");
+        fprintf(stderr, "Error: Computed input path too long\n");
         exit(1);
     }
 
     #ifdef MODE_WRITE
     if (strlen(full_output_path) >= MAX_PATH) {
-        printf("Error: Computed output path too long\n");
+        fprintf(stderr, "Error: Computed output path too long\n");
         exit(1);
     }
     #endif
@@ -177,7 +212,7 @@ INLINE Args parse_args(int argc, char** argv) {
     #else
     if (access(input_file, F_OK) != 0) {
     #endif
-        printf("Error: Input file '%s' does not exist\n", input_file);
+        fprintf(stderr, "Error: Input file '%s' does not exist\n", input_file);
         exit(1);
     }
 
@@ -206,7 +241,7 @@ INLINE Args parse_args(int argc, char** argv) {
     args.fd_out = open(output_file, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0644);
     args.write_buffer = (char*)mat_aligned_alloc(CACHE_LINE, WRITE_BUF);
     args.buf_pos = args.write_buffer;
-    const char* header = RESULT_CSV_HEADER;
+    const char* header = WRITE_CSV_HEADER;
     args.buf_pos = fast_strcpy(args.write_buffer, header, strlen(header));
     #endif
 

@@ -26,8 +26,6 @@ typedef HANDLE sem_t;
 typedef struct {
        const char* seq1;
        const char* seq2;
-              int  prev_label;
-              int  label;
     ScoringMatrix* scoring;
         Alignment* result;
 } AlignTask;

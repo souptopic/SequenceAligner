@@ -13,27 +13,29 @@ int main(int argc, char** argv) {
     #endif
     
     char** seqs = (char**)malloc(sizeof(char*) * BATCH_SIZE);
-    for (int i = 0; i < BATCH_SIZE; i++) seqs[i] = (char*)mat_aligned_alloc(CACHE_LINE, MAX_SEQ_LEN);
-    int* labels = (int*)malloc(sizeof(int) * BATCH_SIZE);
+    char** other_data = (char**)malloc(sizeof(char*) * BATCH_SIZE);
+    for (int i = 0; i < BATCH_SIZE; i++) {
+        seqs[i] = (char*)mat_aligned_alloc(CACHE_LINE, MAX_SEQ_LEN);
+        other_data[i] = (char*)mat_aligned_alloc(CACHE_LINE, MAX_CSV_LINE - MAX_SEQ_LEN);
+    }
 
     char* current = args.file_data;
     char* end = args.file_data + args.data_size;
     
     current = skip_header(current, end);
 
-    init_length_lookup();
-
-    parse2(&current, seqs[0], &labels[0]);
-    size_t seq_count = 1;
-
+    init_format();
     init_thread_pool();
     ScoringMatrix* scoring = (ScoringMatrix*)mat_aligned_alloc(CACHE_LINE, sizeof(ScoringMatrix));
     init_scoring_matrix(scoring);
 
     double start = get_time();
+
+	parse_csv_line(&current, seqs[0], other_data[0]);
+	size_t seq_count = 1;
     while (current < end && *current) {
         while (seq_count < BATCH_SIZE && current < end && *current) {
-            parse2(&current, seqs[seq_count], &labels[seq_count]);
+            parse_csv_line(&current, seqs[seq_count], other_data[seq_count]);
             seq_count++;
         }
 
@@ -47,8 +49,6 @@ int main(int argc, char** argv) {
             tasks[i] = (AlignTask){
                 .seq1 = seqs[i],
                 .seq2 = seqs[i + 1],
-                .prev_label = labels[i],
-                .label = labels[i + 1],
                 .scoring = scoring,
                 .result = &results[i]
             };
@@ -66,17 +66,19 @@ int main(int argc, char** argv) {
 
         #ifdef MODE_WRITE
         for (size_t i = 0; i < num_pairs; i++) {
-            if ((size_t)(buf_pos - write_buffer) > WRITE_BUF - MAX_LINE * 4) {
+            if ((size_t)(buf_pos - write_buffer) > WRITE_BUF - MAX_CSV_LINE * 4) {
                 write(fd_out, write_buffer, buf_pos - write_buffer);
                 buf_pos = write_buffer;
             }
-            buf_pos = write_alignment_output(buf_pos, tasks[i].seq1, strlen(tasks[i].seq1), tasks[i].seq2, strlen(tasks[i].seq2), tasks[i].prev_label, tasks[i].label, &results[i]);
+            Data prev = {seqs[i], other_data[i], strlen(seqs[i])};
+            Data curr = {seqs[i + 1], other_data[i + 1], strlen(seqs[i + 1])};
+            buf_pos = write_alignment_output(buf_pos, &prev, &curr, &results[i]);
         }
         #endif
 
         // Keep last sequence for next batch
-        memcpy(seqs[0], seqs[seq_count - 1], strlen(seqs[seq_count - 1]) + 1);
-        labels[0] = labels[seq_count - 1];
+        strcpy(seqs[0], seqs[seq_count - 1]);
+        strcpy(other_data[0], other_data[seq_count - 1]);
         seq_count = 1;
 
         free(tasks);
@@ -92,9 +94,12 @@ int main(int argc, char** argv) {
 
     free_args(&args);
 
-    for (int i = 0; i < BATCH_SIZE; i++) mat_aligned_free(seqs[i]);
+	for (int i = 0; i < BATCH_SIZE; i++) {
+        mat_aligned_free(seqs[i]);
+        mat_aligned_free(other_data[i]);
+    }
     free(seqs);
-    free(labels);
+    free(other_data);
     mat_aligned_free(scoring);
     destroy_thread_pool();
     
