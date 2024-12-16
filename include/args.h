@@ -81,8 +81,8 @@ static void check_directory(const char* path, const char* type) {
 }
 
 static char* compute_base_path(const char* argv0) {
-    static char base_path[MAX_PATH];
-    static char resolved_path[MAX_PATH];
+    static char base_path[MAX_PATH + 1];
+    static char resolved_path[MAX_PATH + 1];
     memset(base_path, 0, sizeof(base_path));
     memset(resolved_path, 0, sizeof(resolved_path));
 
@@ -103,7 +103,7 @@ static char* compute_base_path(const char* argv0) {
     }
     #else 
 
-    char cwd[MAX_PATH];
+    char cwd[MAX_PATH + 1];
     if (getcwd(cwd, sizeof(cwd)) == NULL) {
         fprintf(stderr, "Error: Could not get current directory\n");
         exit(1);
@@ -114,7 +114,7 @@ static char* compute_base_path(const char* argv0) {
         exit(1);
     }
 
-    snprintf(base_path, MAX_PATH, "%s/%s", cwd, argv0);
+    snprintf(base_path, MAX_PATH + 1, "%s/%s", cwd, argv0);
     #endif
 
     base_path[MAX_PATH - 1] = '\0';

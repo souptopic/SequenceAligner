@@ -43,7 +43,6 @@ a1,a2,alignment,b1,b2,score,c1,c2 <- WRITE HEADER
 EXAMPLE THAT PAIRS WITH READ EXAMPLES:
 "animal1,animal2,alignment,part1,part2,sequence1,sequence2,id1,id2,score" -> WRITE_CSV_SEQ1_POS = 4, WRITE_CSV_SEQ2_POS = 5,
                                                                              WRITE_CSV_SCORE_POS = 9, WRITE_CSV_ALIGN_POS = 2*/
-#ifdef MODE_WRITE
 #define WRITE_CSV_HEADER "sequence1,sequence2,label1,label2,score,alignment\n"
 #define WRITE_CSV_SEQ1_POS (0)
 #define WRITE_CSV_SEQ2_POS (1)
@@ -51,7 +50,6 @@ EXAMPLE THAT PAIRS WITH READ EXAMPLES:
 #define WRITE_CSV_ALIGN_POS (5)
 #define WRITE_CSV_ALIGN_FORMAT "\"('%s', '%s')\""
 #define ALIGN_STRL (3 + SEQ_BUF + 4 + SEQ_BUF + 3) // SEQ_BUF = MAX_SEQ_LEN * 2 // because of extra possible '-' when aligning
-#endif
 
 /* The result of the default format will be exactly like this
 READ_CSV
@@ -192,6 +190,7 @@ INLINE void init_format() {
         }
     }
 
+    #ifdef MODE_WRITE
     // Write format analysis
     header = WRITE_CSV_HEADER;
     size_t write_cols = 1;
@@ -204,7 +203,7 @@ INLINE void init_format() {
     write_format.score_pos = WRITE_CSV_SCORE_POS;
     write_format.align_pos = WRITE_CSV_ALIGN_POS;
     
-    // Calculate how many data column pairs we need
+    // Calculate how many data column pairs is needed
     write_format.data_count = read_format.data_count;
     write_format.data1_pos = malloc(sizeof(size_t) * write_format.data_count);
     write_format.data2_pos = malloc(sizeof(size_t) * write_format.data_count);
@@ -232,22 +231,22 @@ INLINE void init_format() {
         }
     }
 
-	// Format validation
-	if (write_format.data_count * 2 > write_cols - 4) {
-		fprintf(stderr, "Error: Not enough columns for data pairs\n");
-		exit(1);
-	}
+    // Format validation
+    if (write_format.data_count * 2 > write_cols - 4) {
+        fprintf(stderr, "Error: Not enough columns for data pairs\n");
+        exit(1);
+    }
 
-	// Validate position bounds
-	if (write_format.seq1_pos >= write_cols || 
-		write_format.seq2_pos >= write_cols ||
-		write_format.score_pos >= write_cols ||
-		write_format.align_pos >= write_cols) {
-		fprintf(stderr, "Error: Column position out of bounds\n");
-		exit(1);
-	}
+    // Validate position bounds
+    if (write_format.seq1_pos >= write_cols || 
+        write_format.seq2_pos >= write_cols ||
+        write_format.score_pos >= write_cols ||
+        write_format.align_pos >= write_cols) {
+        fprintf(stderr, "Error: Column position out of bounds\n");
+        exit(1);
+    }
 
-	// Validate data column pairs order
+    // Validate data column pairs order
     for(size_t i = 0; i < write_format.data_count; i++) {
         if (write_format.data1_pos[i] >= write_format.data2_pos[i]) {
             fprintf(stderr, "Error: Data column 1 must come before column 2 for each pair\n");
@@ -269,6 +268,7 @@ INLINE void init_format() {
     }
 
     free(used);
+    #endif
 }
 
 INLINE char* parse_csv_line(char** current, char* seq, char* other_data) {
@@ -298,8 +298,8 @@ INLINE char* parse_csv_line(char** current, char* seq, char* other_data) {
 }
 
 
-INLINE char* write_alignment_output(char* buf_pos, const Data* prev, const Data* curr, const Alignment* result) {
-    size_t total_cols = 4 + write_format.data_count * 2;
+INLINE char* buffer_output(char* buf_pos, const Data* prev, const Data* curr, const Alignment* result) {
+    const size_t total_cols = 4 + write_format.data_count * 2;
     bool first = true;
     
     for (size_t col = 0; col < total_cols; col++) {
@@ -307,28 +307,20 @@ INLINE char* write_alignment_output(char* buf_pos, const Data* prev, const Data*
         if (!first) {
             *buf_pos++ = ',';
         }
+
         first = false;
 
         if (col == write_format.seq1_pos) {
-            // Write first sequence
-            size_t len = strlen(prev->seq);
-            memcpy(buf_pos, prev->seq, len);
-            buf_pos += len;
+            buf_pos = fast_strcpy(buf_pos, prev->seq, prev->len);
         }
         else if (col == write_format.seq2_pos) {
-            // Write second sequence
-            size_t len = strlen(curr->seq);
-            memcpy(buf_pos, curr->seq, len);
-            buf_pos += len;
+            buf_pos = fast_strcpy(buf_pos, curr->seq, curr->len);
         }
         else if (col == write_format.score_pos) {
-            // Write alignment score
             buf_pos = int_to_str(buf_pos, result->score);
         }
         else if (col == write_format.align_pos) {
-            // Write alignment result
-            buf_pos += sprintf(buf_pos, WRITE_CSV_ALIGN_FORMAT,
-                             result->seq1_aligned, result->seq2_aligned);
+            buf_pos += sprintf(buf_pos, WRITE_CSV_ALIGN_FORMAT, result->seq1_aligned, result->seq2_aligned);
         }
         else {
             // Handle data columns

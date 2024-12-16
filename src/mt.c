@@ -31,8 +31,8 @@ int main(int argc, char** argv) {
 
     double start = get_time();
 
-	parse_csv_line(&current, seqs[0], other_data[0]);
-	size_t seq_count = 1;
+    parse_csv_line(&current, seqs[0], other_data[0]);
+    size_t seq_count = 1;
     while (current < end && *current) {
         while (seq_count < BATCH_SIZE && current < end && *current) {
             parse_csv_line(&current, seqs[seq_count], other_data[seq_count]);
@@ -72,7 +72,7 @@ int main(int argc, char** argv) {
             }
             Data prev = {seqs[i], other_data[i], strlen(seqs[i])};
             Data curr = {seqs[i + 1], other_data[i + 1], strlen(seqs[i + 1])};
-            buf_pos = write_alignment_output(buf_pos, &prev, &curr, &results[i]);
+            buf_pos = buffer_output(buf_pos, &prev, &curr, &results[i]);
         }
         #endif
 
@@ -94,7 +94,7 @@ int main(int argc, char** argv) {
 
     free_args(&args);
 
-	for (int i = 0; i < BATCH_SIZE; i++) {
+    for (int i = 0; i < BATCH_SIZE; i++) {
         mat_aligned_free(seqs[i]);
         mat_aligned_free(other_data[i]);
     }
