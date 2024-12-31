@@ -1,0 +1,10 @@
+bin/
+scripts/configuration/__pycache__/
+
+# Too large for github
+results/results_mt.csv
+testing/datasets/avpdb_mt.csv
+
+# Personal testing files (temporary)
+scripts/combined_source.c
+scripts/combine_source.py
