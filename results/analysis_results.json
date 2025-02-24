@@ -1,0 +1,142 @@
+{
+  "analysis_timestamp": "2025-02-26T00:59:56.128819",
+  "dataset": {
+    "path": "datasets/avpdb.csv",
+    "sequences": 1042,
+    "positive_samples": 598,
+    "negative_samples": 444
+  },
+  "clustering_results": {
+    "kmeans": {
+      "cluster_sizes": [
+        734,
+        308
+      ],
+      "inertia": 252858991.60097277,
+      "cluster_centers": [
+        [
+          1878.3606108991828,
+          0.11727554806855271,
+          38.968311797696146,
+          -0.2744267756586407,
+          1.2658743813865607,
+          0.42183882880853246,
+          0.10632896278036813,
+          0.3077082729849811,
+          0.5334082938542836
+        ],
+        [
+          3962.275544155844,
+          0.06933011322896936,
+          47.096332099694855,
+          -0.4988918271162655,
+          -1.0222750488804138,
+          0.38584178815215153,
+          -0.01640623858486087,
+          0.24682654420395012,
+          0.5371515420549374
+        ]
+      ]
+    },
+    "dbscan": {
+      "n_clusters": 1,
+      "n_noise": 1042,
+      "cluster_sizes": []
+    },
+    "spectral": {
+      "cluster_sizes": [
+        974,
+        68
+      ]
+    }
+  },
+  "clustering_significance": {
+    "chi2_statistic": 97.00498246435119,
+    "chi2_pvalue": 6.915309414891369e-23,
+    "fisher_statistic": 4.65567480938274,
+    "fisher_pvalue": 2.284810564476441e-24,
+    "adjusted_rand_index": 0.0427978746161936,
+    "adjusted_mutual_info": 0.07747183649942876
+  },
+  "similarity_stats": {
+    "total_comparisons": 542361,
+    "total_sequences": 1042,
+    "min_similarity": 0.0,
+    "max_similarity": 264.0,
+    "sum_similarity": 9158933.0,
+    "processed_pairs": 542361,
+    "mean_similarity": 16.887152652937804
+  },
+  "ml_analysis": {
+    "random_forest": {
+      "mean_accuracy": 0.5844313581155687,
+      "std_accuracy": 0.12918023797270817
+    },
+    "svm": {
+      "mean_accuracy": 0.5250828119249171,
+      "std_accuracy": 0.05747031245673517
+    }
+  },
+  "similarity_analysis": {
+    "pos_samples": 598.0,
+    "neg_samples": 444.0,
+    "total_samples": 1042,
+    "class_ratio": 0.5738963531669866,
+    "within_positive": 20.48007583618164,
+    "within_positive_std": 20.754016876220703,
+    "within_negative": 14.532344818115234,
+    "within_negative_std": 9.461149215698242,
+    "between_groups": 15.343863487243652,
+    "between_groups_std": 7.739841461181641,
+    "ttest_pvalue": 0.0,
+    "mannwhitney_pvalue": 0.0,
+    "similarity_mean": 16.88715171813965,
+    "similarity_std": 13.919071197509766,
+    "similarity_min": 0.0,
+    "similarity_max": 264.0,
+    "similarity_quartiles": [
+      11.0,
+      15.0,
+      19.0
+    ],
+    "similarity_range": 264.0,
+    "property_correlations": {
+      "molecular_weight": {
+        "correlation": 0.3443440173967851,
+        "p_value": 2.2399277006782737e-30
+      },
+      "aromaticity": {
+        "correlation": 0.10082681106329058,
+        "p_value": 0.0011176870465353617
+      },
+      "instability_index": {
+        "correlation": 0.04055431719453976,
+        "p_value": 0.19085254757165906
+      },
+      "hydrophobicity": {
+        "correlation": 0.10063743035020564,
+        "p_value": 0.001142171978583105
+      },
+      "charge": {
+        "correlation": 0.024362872314188037,
+        "p_value": 0.4320978878885083
+      },
+      "hydrophobic_ratio": {
+        "correlation": 0.18479711554987394,
+        "p_value": 1.8560342754756402e-09
+      },
+      "net_charge_ratio": {
+        "correlation": 0.016806904858358694,
+        "p_value": 0.5878774786680874
+      },
+      "amphipathicity": {
+        "correlation": 0.09797420902157802,
+        "p_value": 0.0015432010405316892
+      },
+      "helix_propensity": {
+        "correlation": 0.23247878699742905,
+        "p_value": 2.966476313468908e-14
+      }
+    }
+  }
+}
